@@ -1,56 +1,54 @@
-import Mathlib.Analysis.Fourier.FourierTransform
-import Mathlib.MeasureTheory.Measure.Dirac
-import Mathlib.MeasureTheory.Integral.Lebesgue
---import Mathlib.Data.Set.Basic
+import Mathlib.Tactic
 
 
-open FourierTransform MeasureTheory Real
+def j : ℂ := Complex.I
+def Signal : Type := ℤ → ℂ
 
-#check 𝓕
+@[simp]
+noncomputable def ZTransform (x : Signal) (z : ℂ) :=
+  ∑' k : ℤ, x (k) * z^(-k)
+
+@[simp]
+noncomputable def DiscreteTimeFourierTransform (x : Signal) (ω : ℝ) :=
+  ∑' k : ℤ, x (k) * Complex.exp (-j * ω * k)
+
+@[simp]
+alias ZT := ZTransform
+
+@[simp]
+alias DTFT := DiscreteTimeFourierTransform
+
+notation "𝓩" => ZT
+notation "𝓕_d" => DTFT
+
+variable (x : Signal)
+
+@[simp]
+def unit_impulse (k : ℤ) : ℤ :=
+  if k = 0 then 1 else 0
+
+@[simp]
+def unit_step (k : ℤ) : ℤ :=
+  if k ≥ 0 then 1 else 0
+
+alias u := unit_step
+alias H := unit_step
+
+@[simp]
+def rect (a b : ℤ) (k : ℤ) :=
+  unit_step (k - b) - unit_step (k - a)
+
+notation "δ" => unit_impulse
+
+theorem ZTransformToDTFT : ∀ x : Signal, (fun ω : ℝ => 𝓩 x (Complex.exp (j * ω))) = 𝓕_d x := by
+  intro x
+  ext ω
+  simp
+  apply tsum_congr
+  intro k
+  calc
+    x k * (Complex.exp (j * ↑ω) ^ k)⁻¹
+      = x k * (Complex.exp (j * ↑ω * ↑k))⁻¹ := by rw [← Complex.exp_int_mul (j * ↑ω) k]; ring_nf
+    _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
---variable {𝕜 : Type*} [CommRing 𝕜]
-  --{V : Type*} [AddCommGroup V] [Module 𝕜 V] [MeasurableSpace V]
-  --{W₁ : Type*} [AddCommGroup W₁] [Module 𝕜 W₁]
-  --{W₂ : Type*} [AddCommGroup W₂] [Module 𝕜 W₂]
-  --{E F G : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] [NormedAddCommGroup F] [NormedSpace ℂ F]
-  --[NormedAddCommGroup G] [NormedSpace ℂ G]
-
-
---def laplaceIntegral (e : AddChar 𝕜 𝕊) (μ : Measure V) (L : V →ₗ[𝕜] W₂ →ₗ[𝕜] 𝕜) (f : V → E)
-    --(g : V → W₁ → ℝ) (w₁ : W₁) (w₂ : W₂) : E :=
-  --∫ v, (Complex.exp (-g v w₁) * e (-L v w₂)) • f v ∂μ
-
---noncomputable def laplaceIntegral (μ : Measure ℝ) (f : ℝ → E)  (s : ℂ) : E :=
-  --∫ t, Complex.exp (-s * t) • f t ∂μ
-
---variable (t : ℝ)
-
-def j := Complex.I
-
-noncomputable def f (t : ℝ) : ℂ := Complex.exp (j * t)
-
-noncomputable def F := 𝓕 f
-
-example : 𝓕 f = dirac 1 := sorry
-
-
-
---noncomputable def realLaplaceIntegral (f : ℝ → E)  (s : ℂ) : E := laplaceIntegral Lebesgue.
-
---notation "𝓛" => laplaceIntegral
-
-
-open MeasureTheory
-
-/--
-A simple example: the integral of a measurable function `f : α → ℝ` with respect to the Dirac
-measure at `x : α` is just `f x`.
--/
-example {α : Type*} [MeasurableSpace α] (x : α) (f : α → ℝ) (hf : Measurable f) :
-  ∫ a, f a ∂(Measure.dirac x) = f x :=
-  sorry
-
-def fourierMeasure (μ : Measure ℝ) (w : ℝ) : ℂ :=
-∫ x in 𝐞 (-x * w) ∂μ
-  sorry
