@@ -1,0 +1,15 @@
+name = "EE546_EC_GN_FP"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["EE546ECGNFP"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+autoImplicit = false
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+
+[[lean_lib]]
+name = "EE546ECGNFP"
