@@ -1,7 +1,7 @@
 import Mathlib.Analysis.Fourier.FourierTransform
 import Mathlib.MeasureTheory.Measure.Dirac
 import Mathlib.MeasureTheory.Integral.Lebesgue
-import Mathlib.Data.Set.Basic
+--import Mathlib.Data.Set.Basic
 
 
 open FourierTransform
@@ -23,3 +23,4 @@ example {α : Type*} [MeasurableSpace α] (x : α) (f : α → ℝ) (hf : Measur
 
 def fourierMeasure (μ : Measure ℝ) (w : ℝ) : ℂ :=
 ∫ x in 𝐞 (-x * w) ∂μ
+  sorry
