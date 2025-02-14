@@ -36,7 +36,7 @@ alias H := unit_step
 
 @[simp]
 def rect (a b : ℤ) (k : ℤ) :=
-  unit_step (k - b) - unit_step (k - a)
+  unit_step (k - a) - unit_step (k - b)
 
 notation "δ" => unit_impulse
 
