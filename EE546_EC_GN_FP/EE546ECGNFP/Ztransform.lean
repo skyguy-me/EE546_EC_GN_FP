@@ -86,15 +86,20 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
 
 
 
-
-
-
-
-
-
-
 theorem zt_unit_step {z : ℂ} (h_roc : |z| > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
   simp
   have : Summable fun k ↦ u k * (z ^ k)⁻¹ := by
     refine' summable_norm_iff.mp _
     simp
+
+
+
+
+
+@[simp]
+theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
+  𝓩 (λ k, α * f₁ k + β * f₂ k) z = α * 𝓩 f₁ z + β * 𝓩 f₂ z :=
+by simp [ZTransform, tsum_add, tsum_mul_left]
+
+@[simp]
+theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) : 𝓩 (λ k, f (k - n)) z = z^(-n) * 𝓩 f z := sorry
