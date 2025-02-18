@@ -1,21 +1,84 @@
 import Mathlib.Analysis.Distribution.SchwartzSpace
 import Mathlib.Analysis.Distribution.FourierSchwartz
+import Mathlib.Data.Real.Basic
+
+set_option maxHeartbeats 1000000
 
 open FourierTransform SchwartzMap
 
+--namespace SchwartzMap
+
+universe u w v
+
 variable
+  (k n : ℕ)
   (𝕜 : Type*) [RCLike 𝕜]
   {E : Type*} [NormedAddCommGroup E] [NormedSpace ℂ E] [NormedSpace 𝕜 E] [SMulCommClass ℂ 𝕜 E]
   {V : Type*} [NormedAddCommGroup V] [InnerProductSpace ℝ V] [FiniteDimensional ℝ V]
-  [MeasurableSpace V] [BorelSpace V]
+    [MeasurableSpace V] [BorelSpace V]
+
+instance : NontriviallyNormedField 𝕜 := by exact DenselyNormedField.toNontriviallyNormedField
 
 
-noncomputable def fourierTransformDistrMap (T : 𝓢(V, E) →L[𝕜] 𝕜) :
-    (𝓢(V, E) → 𝕜) :=
-  fun φ => T (fourierTransformCLM 𝕜 φ)
+noncomputable instance : SeminormedAddCommGroup (𝓢(V, E)) where
+  norm := SchwartzMap.seminorm 𝕜 k n
+  dist_self := by intro x; simp
+  dist_comm := by
+    intro x y
+    exact map_sub_rev (SchwartzMap.seminorm 𝕜 k n) x y
+  dist_triangle := by
+    intro x y z
+    exact le_map_sub_add_map_sub (SchwartzMap.seminorm 𝕜 k n) x y z
 
-lemma fourierTransformDistrMapAdd : IsBoundedLinearMap 𝕜 fourierTransformDistrMap :=
-  sorry
+
+noncomputable instance : SeminormedAddCommGroup (𝓢(V, E) →L[𝕜] 𝕜) where
+  norm := fun T => ⨆ (f : 𝓢(V, E)) (hf : SchwartzMap.seminorm 𝕜 k n f ≤ 1), ‖T f‖
+  dist_self := by
+    intro x
+    simp
+    change ⨆ f, ⨆ _, ‖0‖ = 0
+    simp only[norm_zero, Real.iSup_const_zero]
+    --simp only[Real.iSup_const_zero]
+
+  dist_comm := by
+    intro T₁ T₂
+    simp
+    congrm ⨆ f, ⨆ _, ?_
+    change ‖T₁ f - T₂ f‖ = ‖T₂ f - T₁ f‖
+    exact norm_sub_rev (T₁ f) (T₂ f)
+
+  dist_triangle := by
+    intro T₁ T₂ T₃
+    simp
+    change ⨆ f, ⨆ _, ‖T₁ f - T₃ f‖ ≤ (⨆ f, ⨆ _, ‖T₁ f - T₂ f‖) + ⨆ f, ⨆ _, ‖T₂ f - T₃ f‖
+    calc
+      ⨆ f, ⨆ _, ‖T₁ f - T₃ f‖ = ⨆ f, ⨆ _, ‖(T₁ f - T₂ f) + (T₂ f - T₃ f)‖ := by
+        congrm ⨆ f, ⨆ _, ?_
+        simp
+
+      _ ≤ ⨆ f, ⨆ _, ‖T₁ f - T₂ f‖ + ‖T₂ f - T₃ f‖ := by
+        have h : ∀ (f : 𝓢(V, E)), ‖(T₁ f - T₂ f) + (T₂ f - T₃ f)‖ ≤ ‖T₁ f - T₂ f‖ + ‖T₂ f - T₃ f‖ := by
+          intro f
+          apply norm_add_le (T₁ f - T₂ f) (T₂ f - T₃ f)
+
+        refine' ciSup_mono ?hbdd _
+        refine bddAbove_def.mpr ?_
+        let a := ContinuousLinearMap.isBoundedLinearMap T₁
+
+      _ ≤ ⨆ f, ⨆ _, ‖T₁ f - T₂ f‖ + ⨆ f, ⨆ _, ‖T₂ f - T₃ f‖ := by
+        --refine iSup_
+
+
+
+
+        --refine @iSup_mono EReal _  _ (fun f => ‖(T₁ f - T₂ f) + (T₂ f - T₃ f)‖) (fun f => ‖T₁ f - T₂ f‖ + ‖T₂ f - T₃ f‖) ?_
+
+
+
+instance : Module 𝕜 (𝓢(V, E) →L[𝕜] 𝕜) where
+  add_smul := by exact fun r s x ↦ Module.add_smul r s x
+  zero_smul := by exact fun x ↦ Module.zero_smul x
+
 
 
 noncomputable def fourierTransformDistribution :
@@ -30,9 +93,5 @@ noncomputable def fourierTransformDistribution :
   map_smul' a T := by ext φ; simp [map_smul]
   cont := by
     simp
-    refine continuous_of_linear_of_bound ?_ ?_ _?
-
-
-
-
-    --dsimp[ContinuousLinearMap 𝕜]
+    refine @continuous_of_linear_of_bound 𝕜 (𝓢(V, E) →L[𝕜] 𝕜) (L[𝕜] (𝓢(V, E) →L[𝕜] 𝕜)) _ _ _ _ _ f hf h_bound
+--end SchwartzMap
