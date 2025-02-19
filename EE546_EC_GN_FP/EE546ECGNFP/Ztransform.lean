@@ -14,19 +14,11 @@ def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
-
-
 def NonNegIntNatIso : NonNegInt ≃ ℕ where
   toFun := fun n ↦ Int.toNat n
-  invFun := fun n ↦ sorry
-  left_inv := fun n ↦ sorry
-  right_inv := fun k ↦ sorry
-
-
-
-
-
-
+  invFun := fun n ↦ Int.ofNat n
+  left_inv := fun n ↦ by simp [int.to_nat_coe_nat]
+  right_inv := fun k ↦ subtype.ext (int.to_nat_of_nonneg k.property)
 
 
 lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
@@ -155,10 +147,8 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
       rw[norm_inv, inv_lt_comm₀, inv_one]
       <;> linarith
 
-    -- rw [tsum_eq_tsum_of_equiv nat_to_nonnegint]
+    rw [tsum_eq_tsum_of_equiv nat_to_nonnegint]
     apply tsum_geometric_of_norm_lt_one hz
-
-
 
 
   have : ∑' (k : NegInt), f k = 0  := by
@@ -172,7 +162,7 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
 
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
-  𝓩 (λ k: α * f₁ k + β * f₂ k) z = α * 𝓩 f₁ z + β * 𝓩 f₂ z :=
+  𝓩 (λ k, α * f₁ k + β * f₂ k) z = α * 𝓩 f₁ z + β * 𝓩 f₂ z :=
 by simp [ZTransform, tsum_add, tsum_mul_left]
 
 @[simp]
