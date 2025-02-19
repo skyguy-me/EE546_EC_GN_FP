@@ -9,9 +9,9 @@ def j : ℂ := Complex.I
 def Signal : Type := ℤ → ℂ
 
 def PosInt : Set ℤ := { k | k > 0 }
-def NonnegInt : Set ℤ := { k | k ≥ 0 }
+def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
-def NonposInt : Set ℤ := { k | k ≤ 0 }
+def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
 lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
@@ -24,7 +24,7 @@ lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
 lemma neg_pos_int_disjoint : Disjoint NegInt PosInt := by
   exact Disjoint.symm int_pos_neg_disjoint
 
-lemma int_pos_nonpos_disjoint : Disjoint PosInt NonposInt := by
+lemma int_pos_nonpos_disjoint : Disjoint PosInt NonPosInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
     intro a _ b _
 
@@ -32,10 +32,10 @@ lemma int_pos_nonpos_disjoint : Disjoint PosInt NonposInt := by
     have : b ≤ 0 := by assumption
     linarith
 
-lemma int_nonpos_pos_disjoint : Disjoint NonposInt PosInt := by
+lemma int_nonpos_pos_disjoint : Disjoint NonPosInt PosInt := by
   exact Disjoint.symm int_pos_nonpos_disjoint
 
-lemma int_neg_nonneg_disjoint : Disjoint NegInt NonnegInt := by
+lemma int_neg_nonneg_disjoint : Disjoint NegInt NonNegInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
     intro a _ b _
 
@@ -43,7 +43,7 @@ lemma int_neg_nonneg_disjoint : Disjoint NegInt NonnegInt := by
     have : b ≥ 0 := by assumption
     linarith
 
-lemma int_nonneg_neg_disjoint : Disjoint NonnegInt NegInt := by
+lemma int_nonneg_neg_disjoint : Disjoint NonNegInt NegInt := by
   exact Disjoint.symm int_neg_nonneg_disjoint
 
 
@@ -98,7 +98,7 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
   rw[ZTransform]
   refine' HasSum.tsum_eq _
   refine' Metric.tendsto_atTop.mpr _
-  intro ε hε
+  intro ε _
   use singleton 0
   intro n hn
   change ‖∑ b ∈ n, (fun k ↦ δ k * z ^ (-k)) b - 1‖ < ε
@@ -120,16 +120,43 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
   rw[ZTransform]
 
-  have ∑' (k : ℤ), u k * z ^ (-k) = 1 / (1 - z⁻¹)
+  let f := fun (k : ℤ) ↦ u k * z ^ (-k)
 
-  let y := z⁻¹
-  have y_sub : y = z⁻¹ := rfl
+  have : ∑' (k : NonNegInt), f k = 1 / (1 - z⁻¹) := by
+    have u_one : ∀ (k : NonNegInt), u k = 1 := by
+      simp[u]
+      intros
+      assumption
 
-  have : ‖y‖ < 1 := by
-    rw[norm_inv, inv_lt_comm₀, inv_one]
-    case ha => linarith
-    case hb => simp
-    assumption
+    simp[f, u_one]
+    let g := fun (k : ℤ) ↦ z ^ (k)
+    have : ∀ (k : PosInt), ‖ (g (k))⁻¹‖ < 1 := by
+      simp[g]
+      intro a _
+      rw[inv_lt_comm₀, inv_one]
+      have : ‖z‖ ≤ ‖z‖ ^ a := by
+        have ha : a > 0 := by assumption
+        by_cases ha_gt_one : a > 1
+
+        case pos =>
+          exact Real.rpow_lt_rpow_of_exponent_lt h_roc.lt ha_gt_one.lt
+
+        case neg =>
+          have ha_one : a = 1 := by linarith
+          simp[ha_one]
+
+
+    refine tsum_geometric_of_norm_lt_one
+
+
+  have : ∑' (k : NegInt), f k = 0  := by
+    have f_zero : ∀ (k : NegInt), f k = 0 := by
+      simp[f, u, unit_step]
+      intro a ha _
+      have : a < 0 := by assumption
+      linarith
+
+    simp[f_zero]
 
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
