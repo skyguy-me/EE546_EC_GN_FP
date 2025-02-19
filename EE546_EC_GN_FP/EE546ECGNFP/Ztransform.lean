@@ -16,16 +16,15 @@ def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
 def NonNegIntNatIso : NonNegInt ≃ ℕ where
   toFun := fun i ↦ Int.toNat i
-  invFun := fun n ↦
-    let i := Int.ofNat n
+  invFun := by
+    intro n
+    refine' ⟨Int.ofNat n, _⟩
+    exact Int.zero_le_ofNat n
 
-    have hi : i ≥ 0 := by
-      simp[NonNegInt]
-      exact Int.zero_le_ofNat n
+  left_inv := by
+    intro x
 
-    ⟨i, hi⟩
 
-  left_inv := fun n ↦ by simp [int.to_nat_coe_nat]
   right_inv := fun k ↦ subtype.ext (int.to_nat_of_nonneg k.property)
 
 
