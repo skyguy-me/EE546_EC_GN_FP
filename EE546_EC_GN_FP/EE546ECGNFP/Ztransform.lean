@@ -4,6 +4,7 @@ import Mathlib.Data.Complex.Abs
 open Complex
 
 set_option maxHeartbeats 1000000
+set_option maxRecDepth 1000
 
 def j : ℂ := Complex.I
 def Signal : Type := ℤ → ℂ
@@ -12,6 +13,13 @@ def PosInt : Set ℤ := { k | k > 0 }
 def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
+
+def NonNegIntNatIso : NonNegInt ≃ ℕ where
+  toFun := fun n ↦ Int.toNat n
+  invFun := fun n ↦ Int.ofNat n
+  left_inv := fun n ↦ by simp [int.to_nat_coe_nat]
+  right_inv := fun k ↦ subtype.ext (int.to_nat_of_nonneg k.property)
+
 
 lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
@@ -117,6 +125,10 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
   simp[hs, h_zero]
   assumption
 
+theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
+  simp
+
+
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
   rw[ZTransform]
 
@@ -128,25 +140,15 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
       intros
       assumption
 
-    simp[f, u_one]
-    let g := fun (k : ℤ) ↦ z ^ (k)
-    have : ∀ (k : PosInt), ‖ (g (k))⁻¹‖ < 1 := by
-      simp[g]
-      intro a _
-      rw[inv_lt_comm₀, inv_one]
-      have : ‖z‖ ≤ ‖z‖ ^ a := by
-        have ha : a > 0 := by assumption
-        by_cases ha_gt_one : a > 1
+    simp [f, u_one, one_mul]
+    simp only [←inv_cpow_int]
 
-        case pos =>
-          exact Real.rpow_lt_rpow_of_exponent_lt h_roc.lt ha_gt_one.lt
+    have hz : ‖z⁻¹‖ < 1 := by
+      rw[norm_inv, inv_lt_comm₀, inv_one]
+      <;> linarith
 
-        case neg =>
-          have ha_one : a = 1 := by linarith
-          simp[ha_one]
-
-
-    refine tsum_geometric_of_norm_lt_one
+    rw [tsum_eq_tsum_of_equiv nat_to_nonnegint]
+    apply tsum_geometric_of_norm_lt_one hz
 
 
   have : ∑' (k : NegInt), f k = 0  := by
