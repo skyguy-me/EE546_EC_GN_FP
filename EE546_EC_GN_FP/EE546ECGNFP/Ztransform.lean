@@ -15,8 +15,16 @@ def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
 def NonNegIntNatIso : NonNegInt ≃ ℕ where
-  toFun := fun n ↦ Int.toNat n
-  invFun := fun n ↦ Int.ofNat n
+  toFun := fun i ↦ Int.toNat i
+  invFun := fun n ↦
+    let i := Int.ofNat n
+
+    have hi : i ≥ 0 := by
+      simp[NonNegInt]
+      exact Int.zero_le_ofNat n
+
+    ⟨i, hi⟩
+
   left_inv := fun n ↦ by simp [int.to_nat_coe_nat]
   right_inv := fun k ↦ subtype.ext (int.to_nat_of_nonneg k.property)
 
@@ -147,7 +155,6 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
       rw[norm_inv, inv_lt_comm₀, inv_one]
       <;> linarith
 
-    rw [tsum_eq_tsum_of_equiv nat_to_nonnegint]
     apply tsum_geometric_of_norm_lt_one hz
 
 
