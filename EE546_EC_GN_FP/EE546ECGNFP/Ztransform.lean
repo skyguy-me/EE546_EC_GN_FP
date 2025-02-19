@@ -22,10 +22,16 @@ def NonNegIntNatIso : NonNegInt ≃ ℕ where
     exact Int.zero_le_ofNat n
 
   left_inv := by
-    intro x
+    intro n
+    simp[]
+    refine Eq.symm (Subtype.coe_eq_of_eq_mk ?_)
+    obtain ⟨ i,hn⟩ := n
+    simp[]
+    assumption
 
-
-  right_inv := fun k ↦ subtype.ext (int.to_nat_of_nonneg k.property)
+  right_inv := by
+    intro n
+    rfl
 
 
 lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
