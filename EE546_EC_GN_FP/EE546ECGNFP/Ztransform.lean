@@ -8,8 +8,44 @@ set_option maxHeartbeats 1000000
 def j : ℂ := Complex.I
 def Signal : Type := ℤ → ℂ
 
---instance Lattice ℂ :=
-local notation "|"x"|" => Complex.abs x
+def PosInt : Set ℤ := { k | k > 0 }
+def NonnegInt : Set ℤ := { k | k ≥ 0 }
+def NegInt : Set ℤ := { k | k < 0 }
+def NonposInt : Set ℤ := { k | k ≤ 0 }
+
+lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
+    refine' Set.disjoint_iff_forall_ne.mpr _
+    intro a _ b _
+
+    have : a > 0 := by assumption
+    have : b < 0 := by assumption
+    linarith
+
+lemma neg_pos_int_disjoint : Disjoint NegInt PosInt := by
+  exact Disjoint.symm int_pos_neg_disjoint
+
+lemma int_pos_nonpos_disjoint : Disjoint PosInt NonposInt := by
+    refine' Set.disjoint_iff_forall_ne.mpr _
+    intro a _ b _
+
+    have : a > 0 := by assumption
+    have : b ≤ 0 := by assumption
+    linarith
+
+lemma int_nonpos_pos_disjoint : Disjoint NonposInt PosInt := by
+  exact Disjoint.symm int_pos_nonpos_disjoint
+
+lemma int_neg_nonneg_disjoint : Disjoint NegInt NonnegInt := by
+    refine' Set.disjoint_iff_forall_ne.mpr _
+    intro a _ b _
+
+    have : a < 0 := by assumption
+    have : b ≥ 0 := by assumption
+    linarith
+
+lemma int_nonneg_neg_disjoint : Disjoint NonnegInt NegInt := by
+  exact Disjoint.symm int_neg_nonneg_disjoint
+
 
 @[simp]
 noncomputable def ZTransform (x : Signal) (z : ℂ) :=
@@ -83,6 +119,8 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
 
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
   rw[ZTransform]
+
+  have ∑' (k : ℤ), u k * z ^ (-k) = 1 / (1 - z⁻¹)
 
   let y := z⁻¹
   have y_sub : y = z⁻¹ := rfl
