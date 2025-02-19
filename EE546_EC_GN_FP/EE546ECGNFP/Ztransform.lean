@@ -25,8 +25,8 @@ alias ZT := ZTransform
 @[simp]
 alias DTFT := DiscreteTimeFourierTransform
 
-notation "𝓩" => ZT
-notation "𝓕_d" => DTFT
+notation "𝓩" => ZTransform
+notation "𝓕_d" => DiscreteTimeFourierTransform
 
 variable (x : Signal)
 
@@ -59,42 +59,39 @@ theorem ZTransformToDTFT : ∀ x : Signal, (fun ω : ℝ => 𝓩 x (Complex.exp 
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
-  have a : Summable fun k ↦ δ k * z^(-k) := by
-    refine' summable_norm_iff.mp _
+  rw[ZTransform]
+  refine' HasSum.tsum_eq _
+  refine' Metric.tendsto_atTop.mpr _
+  intro ε hε
+  use singleton 0
+  intro n hn
+  change ‖∑ b ∈ n, (fun k ↦ δ k * z ^ (-k)) b - 1‖ < ε
+
+  have h_zero : 0 ∈ n := by exact Finset.zero_subset.mp hn
+
+  have hs : ∑ b ∈ n, (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) b = 1 := by
+    rw[←Finset.add_sum_erase n (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) h_zero]
     simp
-    use 1
-    refine' Metric.tendsto_atTop.mpr _
-    intro ε hε
-    use singleton 0
-    intro n hn
-    change ‖(∑ b ∈ n, (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) b) - 1‖ < ε
-    have h_zero : 0 ∈ n := by exact Finset.zero_subset.mp hn
+    apply Finset.sum_eq_zero
+    intro x hx
+    have hx_nonzero : x ≠ 0 := by exact Finset.ne_of_mem_erase hx
+    simp only[hx_nonzero]
+    exact (AbsoluteValue.eq_zero Complex.abs).mpr rfl
 
-    have hs : ∑ b ∈ n, (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) b = 1 := by
-      rw[←Finset.add_sum_erase n (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) h_zero]
-      simp
-      apply Finset.sum_eq_zero
-      intro x hx
-      have : x ≠ 0 := by exact Finset.ne_of_mem_erase hx
-      simp
-      intro _
-      contradiction
+  simp[hs, h_zero]
+  assumption
 
+theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
+  rw[ZTransform]
 
-  unfold ZT ZTransform
-  rw[tsum_eq_tsum_of_ne_zero]
+  let y := z⁻¹
+  have y_sub : y = z⁻¹ := rfl
 
-
-
-theorem zt_unit_step {z : ℂ} (h_roc : |z| > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
-  simp
-  have : Summable fun k ↦ u k * (z ^ k)⁻¹ := by
-    refine' summable_norm_iff.mp _
-    simp
-
-
-
-
+  have : ‖y‖ < 1 := by
+    rw[norm_inv, inv_lt_comm₀, inv_one]
+    case ha => linarith
+    case hb => simp
+    assumption
 
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
