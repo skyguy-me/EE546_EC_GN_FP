@@ -14,6 +14,7 @@ def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
+@[simp]
 def NonNegIntNatIso : NonNegInt ≃ ℕ where
   toFun := fun i ↦ Int.toNat i
   invFun := by
@@ -140,6 +141,11 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
 
 theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
   simp
+
+
+tsum_equiv :
+  ∀ (α β : Type) [Countable α] [Countable β] {f : α → ℂ} (e : α ≃ β),
+    (∑' a : α, f a) = ∑' b : β, f (e.symm b)
 
 
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
