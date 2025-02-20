@@ -251,10 +251,9 @@ theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) : 𝓩 (f
 @[simp]
 theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
   rw [ZTransform]
-  rw[tsum_congr]
-  simp -- (z ^ n)⁻¹ * ∑' (k : ℤ), f k * (z ^ k)⁻¹
+  have : (fun k => f (k - n) * z ^ (-k)) = (fun k => f k * z ^ (-(k + n))) := by
 
-
+    sorry
   sorry
 
 @[simp]
