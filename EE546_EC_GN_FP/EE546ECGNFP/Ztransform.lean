@@ -143,7 +143,7 @@ theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
   simp
 
 
-theorem tsum_equiv : ∀ (α β : Type) [Countable α] [Countable β] {f : α → ℂ} (e : α ≃ β), (∑' a : α, f a) = ∑' b : β, f (e.symm b) := by
+theorem tsum_equiv : ∀ {α β : Type} [Countable α] [Countable β] {f : α → ℂ} (e : α ≃ β), (∑' a : α, f a) = ∑' b : β, f (e.symm b) := by
   exact fun α β [Countable α] [Countable β] {f} e ↦ Eq.symm (Equiv.tsum_eq e.symm f)
 
 
@@ -166,6 +166,8 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
       rw[norm_inv, inv_lt_comm₀, inv_one]
       <;> linarith
 
+
+    simp only[tsum_equiv NonNegIntNatIso]
     apply tsum_geometric_of_norm_lt_one hz
 
 
@@ -177,6 +179,8 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
       linarith
 
     simp[f_zero]
+
+  apply tsum_union_disjoint
 
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
