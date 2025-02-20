@@ -3,7 +3,7 @@ import Mathlib.Data.Complex.Abs
 
 open Complex
 
-set_option maxHeartbeats 1000000
+set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
 
 def j : ℂ := Complex.I
@@ -15,7 +15,45 @@ def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
 @[simp]
-def NonNegIntNatIso : NonNegInt ≃ ℕ where
+theorem nonpos_pos_union : NonPosInt ∪ PosInt = Set.univ := by
+  ext x
+  apply Iff.intro
+  . intro hmp
+    trivial
+
+  . intro hmpr
+    by_cases hx : x > 0
+    case pos => exact Set.mem_union_right NonPosInt hx
+    case neg =>
+      have : x ≤ 0 := by exact Int.not_lt.mp hx
+      exact Set.mem_union_left PosInt this
+
+@[simp]
+theorem pos_nonpos_union : PosInt ∪ NonPosInt = Set.univ := by
+  rw[←Set.union_comm]
+  exact nonpos_pos_union
+
+@[simp]
+theorem nonneg_neg_union : NonNegInt ∪ NegInt = Set.univ := by
+  ext x
+  apply Iff.intro
+  . intro hmp
+    trivial
+
+  . intro hmpr
+    by_cases hx : x < 0
+    case pos => exact Set.mem_union_right NonNegInt hx
+    case neg =>
+      have : x ≥ 0 := by exact Int.not_lt.mp hx
+      exact Set.mem_union_left NegInt this
+
+@[simp]
+theorem neg_nonneg_union : NegInt ∪ NonNegInt = Set.univ := by
+  rw[←Set.union_comm]
+  exact nonneg_neg_union
+
+@[simp]
+def nonnegint_nat_equiv : NonNegInt ≃ ℕ where
   toFun := fun i ↦ Int.toNat i
   invFun := by
     intro n
@@ -33,7 +71,6 @@ def NonNegIntNatIso : NonNegInt ≃ ℕ where
   right_inv := by
     intro n
     rfl
-
 
 @[simp]
 lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
@@ -152,32 +189,20 @@ theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
 theorem tsum_equiv : ∀ {α β : Type} [Countable α] [Countable β] {f : α → ℂ} (e : α ≃ β), (∑' a : α, f a) = ∑' b : β, f (e.symm b) := by
   exact fun α β [Countable α] [Countable β] {f} e ↦ Eq.symm (Equiv.tsum_eq e.symm f)
 
-
+theorem hasSum_equiv {α β γ : Type*}
+  [AddCommMonoid α] [TopologicalSpace α]
+  {f : β → α} {a : α} (e : γ ≃ β) :
+   HasSum (f ∘ e) a ↔ HasSum f a := by
+    refine' Function.Injective.hasSum_iff e.injective _
+    intro _ hx
+    simp at hx
 
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
   rw[ZTransform]
 
   let f := fun (k : ℤ) ↦ u k * z ^ (-k)
 
-  have : ∑' (k : NonNegInt), f k = 1 / (1 - z⁻¹) := by
-    have u_one : ∀ (k : NonNegInt), u k = 1 := by
-      simp[u]
-      intros
-      assumption
-
-    simp [f, u_one, one_mul]
-    simp only [←inv_cpow_int]
-
-    have hz : ‖z⁻¹‖ < 1 := by
-      rw[norm_inv, inv_lt_comm₀, inv_one]
-      <;> linarith
-
-
-    simp only[tsum_equiv NonNegIntNatIso]
-    apply tsum_geometric_of_norm_lt_one hz
-
-
-  have : ∑' (k : NegInt), f k = 0  := by
+  have s_neg : HasSum (fun k : NegInt ↦ f k) 0 := by
     have f_zero : ∀ (k : NegInt), f k = 0 := by
       simp[f, u, unit_step]
       intro a ha _
@@ -185,13 +210,35 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
       linarith
 
     simp[f_zero]
+    exact hasSum_zero
 
+  have s_nonneg : HasSum (fun (k : NonNegInt) ↦ f k) (1 / (1 - z⁻¹)) := by
+    refine' (hasSum_equiv
+      (f := fun k : NonNegInt ↦ f k)
+      (a := (1 / (1 - z⁻¹))) nonnegint_nat_equiv.symm).mp _
 
+    have u_one : ∀ (k : NonNegInt), u k = 1 := by
+      simp[u]
+      intros
+      assumption
 
+    have hz : ‖z⁻¹‖ < 1 := by
+      rw[norm_inv, inv_lt_comm₀, inv_one]
+      <;> linarith
 
+    simp[f, u_one]
+    simp only[←inv_cpow_int]
 
+    change HasSum (fun n : ℕ ↦ z⁻¹ ^ n) (1 - z⁻¹)⁻¹
+    exact hasSum_geometric_of_norm_lt_one hz
 
+  rw[←tsum_univ, ←neg_nonneg_union]
 
+  have : (tsum fun (k : ↑(NegInt ∪ NonNegInt)) ↦ f ↑k) =
+    ∑' (k : ↑NegInt), f ↑k + ∑' (k : ↑NonNegInt), f ↑k :=
+    tsum_union_disjoint int_neg_nonneg_disjoint s_neg.summable s_nonneg.summable
+
+  rw[this, s_neg.tsum_eq, s_nonneg.tsum_eq, zero_add]
 
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
