@@ -240,6 +240,14 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
 
   rw[this, s_neg.tsum_eq, s_nonneg.tsum_eq, zero_add]
 
+
+
+noncomputable def discrete_convolution (f g : Signal) : Signal :=
+  fun k => ∑' m : ℤ, f m * g (k - m)
+
+
+
+
 -- These are the equations from the refrence text. We will be attmepting to prove these as a proof of concept excercise.
 
 
@@ -252,7 +260,8 @@ theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) : 𝓩 (f
 theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
   rw [ZTransform]
   have : (fun k => f (k - n) * z ^ (-k)) = (fun k => f k * z ^ (-(k + n))) := by
-
+    simp
+    funext k
     sorry
   sorry
 
