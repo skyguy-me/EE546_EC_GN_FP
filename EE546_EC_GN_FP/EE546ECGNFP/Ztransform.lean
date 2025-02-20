@@ -35,6 +35,7 @@ def NonNegIntNatIso : NonNegInt ≃ ℕ where
     rfl
 
 
+@[simp]
 lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
     intro a _ b _
@@ -43,9 +44,11 @@ lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
     have : b < 0 := by assumption
     linarith
 
+@[simp]
 lemma neg_pos_int_disjoint : Disjoint NegInt PosInt := by
   exact Disjoint.symm int_pos_neg_disjoint
 
+@[simp]
 lemma int_pos_nonpos_disjoint : Disjoint PosInt NonPosInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
     intro a _ b _
@@ -54,9 +57,11 @@ lemma int_pos_nonpos_disjoint : Disjoint PosInt NonPosInt := by
     have : b ≤ 0 := by assumption
     linarith
 
+@[simp]
 lemma int_nonpos_pos_disjoint : Disjoint NonPosInt PosInt := by
   exact Disjoint.symm int_pos_nonpos_disjoint
 
+@[simp]
 lemma int_neg_nonneg_disjoint : Disjoint NegInt NonNegInt := by
     refine' Set.disjoint_iff_forall_ne.mpr _
     intro a _ b _
@@ -65,6 +70,7 @@ lemma int_neg_nonneg_disjoint : Disjoint NegInt NonNegInt := by
     have : b ≥ 0 := by assumption
     linarith
 
+@[simp]
 lemma int_nonneg_neg_disjoint : Disjoint NonNegInt NegInt := by
   exact Disjoint.symm int_neg_nonneg_disjoint
 
@@ -180,7 +186,12 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
 
     simp[f_zero]
 
-  apply tsum_union_disjoint
+
+
+
+
+
+
 
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) :
