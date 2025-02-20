@@ -247,18 +247,6 @@ noncomputable def discrete_convolution (f g : Signal) : Signal :=
 
 
 
-theorem ZTransform_convolution (f g : Signal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
-  rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
-  simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
-
-
-  let h := fun k => ∑' m : ℤ, f m * g (k - m)
-  let t := fun k => h k * z ^ (-k)
-
-
-
-sorry
-
 
 
 
@@ -279,7 +267,7 @@ theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k =>
 
 @[simp]
 theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
-sorry
+  sorry
 
 @[simp]
 theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
@@ -288,3 +276,20 @@ theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k
 @[simp]
 theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
   sorry
+
+@[simp]
+theorem ZTransform_convolution (f g : Signal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
+  rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
+  simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
+
+
+  let h := fun k => ∑' m : ℤ, f m * g (k - m)
+  let t := fun k => h k * z ^ (-k)
+  sorry
+
+
+-- theorem ZTransform_IVT: := by
+--   sorry
+
+-- theorem ZTransform_FVT := by
+--   sorry
