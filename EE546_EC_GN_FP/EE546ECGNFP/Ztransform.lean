@@ -249,7 +249,13 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
 theorem ZTransform_linear (f₁ f₂ : Signal) (α β : ℂ) (z : ℂ) : 𝓩 (fun k => α * f₁ k + β * f₂ k) z = α * 𝓩 f₁ z + β * 𝓩 f₂ z := by sorry
 
 @[simp]
-theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := sorry
+theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
+  rw [ZTransform]
+  rw[tsum_congr]
+  simp -- (z ^ n)⁻¹ * ∑' (k : ℤ), f k * (z ^ k)⁻¹
+
+
+  sorry
 
 @[simp]
 theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := sorry
