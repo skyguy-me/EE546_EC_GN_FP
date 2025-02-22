@@ -182,9 +182,13 @@ noncomputable def zt_kernel_of (x : Signal) (z : ℂ) : ℤ → ℂ :=
 noncomputable def ZTransform (x : Signal) (z : ℂ) :=
   ∑' k : ℤ, x (k) * z^(-k : ℤ)
 
+def HasZTransform {z : ℂ} (x : Signal) := HasSum (fun (k : ℤ) ↦ x k * z ^ (-k : ℤ))
+
 @[simp]
 noncomputable def ZTransformUnilateral (x : Signal) (z : ℂ) :=
   ∑' k : ℕ, x (k) * z^(-k : ℤ)
+
+def HasZTransformUnilateral (x : Signal) (z : ℂ) := HasSum (fun (n : ℤ) ↦ x n * z ^ (-n : ℤ))
 
 @[simp]
 noncomputable def ZTransformUnilateral' (x : Signal) (z : ℂ) :=
@@ -270,21 +274,20 @@ theorem ZTransformToDTFT : ∀ x : Signal, (fun ω : ℝ => 𝓩 x (Complex.exp 
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
-theorem zt_unit_impulse' {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
-  rw[ZTransform]
-  simp only [unit_impulse_equiv_indicator]
-  refine' HasSum.tsum_eq _
+theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : @HasZTransform z (fun k ↦ δ (k - k₀)) (z ^ (-k₀)) := by
+  rw[HasZTransform]
+  simp
 
-  have : ∀ k : ℤ, Set.indicator {0} 1 k * z ^ (-k) =
-    Set.indicator {0} (fun k' ↦ z ^ (-k')) k  := by
-      intro k
-      unfold Set.indicator
-      by_cases hk : k = 0
-      <;> simp[hk]
-
+  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
   simp only[this]
-  refine' (hasSum_subtype_iff_indicator).mp _
-  exact hasSum_singleton 0 (fun k ↦ z ^ (-k))
+
+  have : ∀ z : ℂ, ∀ k : ℤ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
+    intro _ k
+    by_cases hk : k = k₀
+    <;> simp[hk]
+  simp [this]
+
+  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
 -- For some reason, this isn't a theorem in Mathlib.
 -- Mathlib has a version of this where n is complex, but that
@@ -297,24 +300,6 @@ theorem inv_cpow_nat (x : ℂ) (n : ℕ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
   simp -- though mathlib does have enough theorems to solve by simp...
 
 
-/--
-Suppose f : β → α. And suppose β ≃ γ (there's a bijection, e, between them).
-
-f has a sum over all elements of β iff f ∘ e has a sum over all elements of γ.
-
-Useful for turning sums over one set into sums over another set. For example,
-this lets you show that:
-
-∑' (i : NonNegInt) f i = ∑' (n : ℕ) f n
--/
-theorem hasSum_equiv {α β γ : Type*}
-  [AddCommMonoid α] [TopologicalSpace α]
-  (e : γ ≃ β) (f : β → α) (a : α) :
-   HasSum (f ∘ e) a ↔ HasSum f a := by
-    refine' Function.Injective.hasSum_iff e.injective _
-    intro _ hx
-    simp at hx
-
 def univ_equiv (α : Type*) : α ≃ @Set.univ α where
   toFun := fun a ↦ ⟨a, by trivial⟩
   invFun := fun
@@ -324,15 +309,14 @@ def univ_equiv (α : Type*) : α ≃ @Set.univ α where
   right_inv := by exact congrFun rfl
 
 theorem hasSum_univ {α β : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
-  (f : β → α) : HasSum (fun x : @Set.univ β ↦ f x) a ↔ HasSum f a := by
-    exact (hasSum_equiv (α := α) (univ_equiv β).symm f a)
+  {f : β → α} : HasSum (fun x : @Set.univ β ↦ f x) a ↔ HasSum f a := by
+    exact (Equiv.hasSum_iff (α := α) (f := f) (a := a) (univ_equiv β).symm)
 
 theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : Signal) :
   HasSum (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) a ↔
   HasSum (fun k : NonNegInt ↦ x k * z ^ (-k : ℤ)) a := by
-    exact (hasSum_equiv nonNegInt_nat_equiv.symm (
-      fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ)
-    )) a
+    exact Equiv.hasSum_iff nonNegInt_nat_equiv.symm (a := a) (
+      f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
 
 theorem ZTUnilateral_tsum_equiv {z : ℂ} (x : Signal) :
   (ZTransformUnilateral x) z = (ZTransformUnilateral' x) z := by
@@ -359,8 +343,12 @@ theorem zt_sum_unit_step {z : ℂ} {f : Signal} {S : ℂ} :
             (s := NonNegInt) (f := fun k' ↦ f k' * z ^ (-k')) (a := S)).mpr hmp
         change HasSum (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ)) S at this
 
-        have := by exact (hasSum_equiv (a := S) (nonNegInt_nat_equiv.symm) (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ))).mpr this
-        change HasSum (fun n : ℕ ↦ f ↑n * z ^ (-n : ℤ)) S  at this
+        have := by exact (Equiv.hasSum_iff
+          (a := S)
+          (f := fun k : NonNegInt ↦ f k * z ^ (-k : ℤ))
+          (nonNegInt_nat_equiv.symm)).mpr this
+
+        change HasSum (fun n : ℕ ↦ f ↑n * z ^ (-n : ℤ)) S at this
         exact this
 
       . intro hmpr
@@ -388,11 +376,10 @@ theorem zt_sum_unit_step {z : ℂ} {f : Signal} {S : ℂ} :
         rw[zero_add] at this
         change HasSum (fun (k : ↑(NegInt ∪ NonNegInt)) ↦ u k * f k * z ^ (-k : ℤ)) S at this
         rw[neg_nonneg_union] at this
-        exact (hasSum_univ (fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ))).mp this
+        exact hasSum_univ.mp this
 
-theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
-  rw[ZTransform]
-  refine' HasSum.tsum_eq _
+theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by
+  rw[HasZTransform]
 
   have : ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) := by simp
   simp only [this]
@@ -408,10 +395,10 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻�
 noncomputable def discrete_convolution (f g : Signal) : Signal :=
   fun k => ∑' m : ℤ, f m * g (k - m)
 
-def HasZTransform {z : ℂ} (f : Signal) := Summable fun k ↦ f k * z ^ (-k)
+def ZTransformable {z : ℂ} (f : Signal) := Summable fun k ↦ f k * z ^ (-k)
 
 @[simp]
-theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @HasZTransform z f₁) (hf₂ : @HasZTransform z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
+theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
   simp only[ZTransform]
   calc
   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
