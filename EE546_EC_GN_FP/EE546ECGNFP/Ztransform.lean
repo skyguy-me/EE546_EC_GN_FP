@@ -17,6 +17,30 @@ def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
+instance : Coe PosInt Int where
+  coe n := match n with
+    | ⟨i, _⟩ => i
+
+instance : Coe NonNegInt Int where
+  coe n := match n with
+    | ⟨i, _⟩ => i
+
+instance : Coe NegInt Int where
+  coe n := match n with
+    | ⟨i, _⟩ => i
+
+instance : Coe NonPosInt Int where
+  coe n := match n with
+    | ⟨i, _⟩ => i
+
+instance : Coe PosInt Nat where
+  coe n := match n with
+    | ⟨i, _⟩ => Int.toNat i
+
+instance : Coe NonNegInt Nat where
+  coe n := match n with
+    | ⟨i, _⟩ => Int.toNat i
+
 /--
 The union of non-positive integers and positive integers is ℤ.
 -/
@@ -150,10 +174,25 @@ Symmetric version of int_neg_nonneg_disjoint
 lemma int_nonneg_neg_disjoint : Disjoint NonNegInt NegInt := by
   exact Disjoint.symm int_neg_nonneg_disjoint
 
+@[simp]
+noncomputable def zt_kernel_of (x : Signal) (z : ℂ) : ℤ → ℂ :=
+  fun k ↦ x (k) * z^(-k : ℤ)
 
 @[simp]
 noncomputable def ZTransform (x : Signal) (z : ℂ) :=
-  ∑' k : ℤ, x (k) * z^(-k)
+  ∑' k : ℤ, x (k) * z^(-k : ℤ)
+
+def HasZTransform {z : ℂ} (x : Signal) := HasSum (fun (k : ℤ) ↦ x k * z ^ (-k : ℤ))
+
+@[simp]
+noncomputable def ZTransformUnilateral (x : Signal) (z : ℂ) :=
+  ∑' k : ℕ, x (k) * z^(-k : ℤ)
+
+def HasZTransformUnilateral (x : Signal) (z : ℂ) := HasSum (fun (n : ℤ) ↦ x n * z ^ (-n : ℤ))
+
+@[simp]
+noncomputable def ZTransformUnilateral' (x : Signal) (z : ℂ) :=
+  ∑' k : NonNegInt, x (k) * z ^ (-↑k : ℤ)
 
 @[simp]
 noncomputable def DiscreteTimeFourierTransform (x : Signal) (ω : ℝ) :=
@@ -166,6 +205,7 @@ alias ZT := ZTransform
 alias DTFT := DiscreteTimeFourierTransform
 
 notation "𝓩" => ZTransform
+notation "𝓩_u" => ZTransformUnilateral
 notation "𝓕_d" => DiscreteTimeFourierTransform
 
 variable (x : Signal)
@@ -175,11 +215,42 @@ variable (x : Signal)
 def unit_impulse (k : ℤ) : ℂ :=
   if k = 0 then 1 else 0
 
+theorem unit_impulse_equiv_indicator :
+    ∀ k : ℤ, unit_impulse k = Set.indicator {0} 1 k := by
+  intro k
+  by_cases k_zero : k = 0
+  <;> simp[k_zero]
+
+
 notation "δ" => unit_impulse
 
 @[simp]
 def unit_step (k : ℤ) : ℂ :=
   if k ≥ 0 then 1 else 0
+
+@[simp]
+theorem unit_step_of_nonneg : ∀ (k : NonNegInt), unit_step k = 1 := by
+  intro ⟨k, hk⟩
+  simp
+  exact hk
+
+@[simp]
+theorem unit_step_of_pos : ∀ (k : PosInt), unit_step k = 1 := by
+  intro ⟨k, hk⟩
+  simp
+  exact Int.le_of_lt hk
+
+@[simp]
+theorem unit_step_of_neg : ∀ (k : NegInt), unit_step k = 0 := by
+  intro ⟨k, hk⟩
+  simp
+  exact hk
+
+theorem unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicator 1 k := by
+  intro k
+  unfold NonNegInt
+  by_cases k_pos : k ≥ 0
+  <;> simp[k_pos]
 
 alias u := unit_step
 alias H := unit_step
@@ -202,60 +273,21 @@ theorem ZTransformToDTFT : ∀ x : Signal, (fun ω : ℝ => 𝓩 x (Complex.exp 
       = x k * (Complex.exp (j * ↑ω * ↑k))⁻¹ := by rw [← Complex.exp_int_mul (j * ↑ω) k]; ring_nf
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
-theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
-  -- Change the goal into an ε criterion.
-  rw[ZTransform]
-  refine' HasSum.tsum_eq _
-  refine' Metric.tendsto_atTop.mpr _
 
-  -- Introduce ε and hε
-  intro ε _
+theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : @HasZTransform z (fun k ↦ δ (k - k₀)) (z ^ (-k₀)) := by
+  rw[HasZTransform]
+  simp
 
-  -- The notation in the goal is a bit funny. N and n are both sets of integers.
-  -- n ≥ N means N ⊆ n.
-  -- This makes sense, since we're summing over all the integers.
+  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
+  simp only[this]
 
-  -- Roughly, this is saying, for a sufficiently large set of set of integers covered,
-  -- The sum is sufficiently close to ε
+  have : ∀ z : ℂ, ∀ k : ℤ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
+    intro _ k
+    by_cases hk : k = k₀
+    <;> simp[hk]
+  simp [this]
 
-  -- Use N = {0}
-  use singleton 0
-  intro n hn
-
-  -- Rewrite the goal so it's more sensible
-  change ‖∑ b ∈ n, (fun k ↦ δ k * z ^ (-k)) b - 1‖ < ε
-
-  -- Show that 0 ∈ n. Since N = {0} ⊆ n, this is trivial.
-  have h_zero : 0 ∈ n := by exact Finset.zero_subset.mp hn
-
-  -- Since the delta function is zero everywhere except 0, the sum should be 1.
-  have hs : ∑ b ∈ n, (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) b = 1 := by
-    --Finset.add_sum_erase n can take a term out of the sum (assuming it's in it)
-    --In this case, since 0 ∈ n, we can take the 0 term out.
-    rw[←Finset.add_sum_erase n (fun x ↦ Complex.abs (if x = 0 then (z ^ x)⁻¹ else 0)) h_zero]
-
-    -- Simplify a bit. Lean can see that the 0 term evalutes to 1 and then subtracts
-    -- it across.
-    simp
-
-    -- Now we just have to show the rest of the sum is zero.
-
-    -- Since all its terms are zero, the sum should be zero.
-    apply Finset.sum_eq_zero
-
-    -- We know k is not zero since we removed it from the set.
-    intro k hk
-    have hk_nonzero : k ≠ 0 := by exact Finset.ne_of_mem_erase hk
-
-    -- Since k isn't 0, the delta function is zero.
-    simp only[hk_nonzero]
-    exact (AbsoluteValue.eq_zero Complex.abs).mpr rfl
-
-  -- So our sum is exactly 1, which is our limit. We can see then that
-  -- For all sets containing at least 0, our distance from the limit
-  -- is 0, which is definitely "sufficiently close" (0 < ε)
-  simp[hs, h_zero]
-  assumption
+  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
 -- For some reason, this isn't a theorem in Mathlib.
 -- Mathlib has a version of this where n is complex, but that
@@ -264,100 +296,109 @@ theorem zt_unit_impulse {z : ℂ} (h_roc : z ≠ 0) : 𝓩 δ z = 1 := by
 theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
   simp -- though mathlib does have enough theorems to solve by simp...
 
-/--
-Suppose f : β → α. And suppose β ≃ γ (there's a bijection, e, between them).
+theorem inv_cpow_nat (x : ℂ) (n : ℕ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
+  simp -- though mathlib does have enough theorems to solve by simp...
 
-f has a sum over all elements of β iff f ∘ e has a sum over all elements of γ.
 
-Useful for turning sums over one set into sums over another set. For example,
-this lets you show that:
+def univ_equiv (α : Type*) : α ≃ @Set.univ α where
+  toFun := fun a ↦ ⟨a, by trivial⟩
+  invFun := fun
+    | ⟨a, _⟩ => a
 
-∑' (i : NonNegInt) f i = ∑' (n : ℕ) f n
--/
-theorem hasSum_equiv {α β γ : Type*}
-  [AddCommMonoid α] [TopologicalSpace α]
-  {f : β → α} {a : α} (e : γ ≃ β) :
-   HasSum (f ∘ e) a ↔ HasSum f a := by
-    refine' Function.Injective.hasSum_iff e.injective _
-    intro _ hx
-    simp at hx
+  left_inv := by exact congrFun rfl
+  right_inv := by exact congrFun rfl
 
-theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : 𝓩 u z = 1 / (1 - z⁻¹) := by
-  rw[ZTransform]
+theorem hasSum_univ {α β : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
+  {f : β → α} : HasSum (fun x : @Set.univ β ↦ f x) a ↔ HasSum f a := by
+    exact (Equiv.hasSum_iff (α := α) (f := f) (a := a) (univ_equiv β).symm)
 
-  let f := fun (k : ℤ) ↦ u k * z ^ (-k)
+theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : Signal) :
+  HasSum (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) a ↔
+  HasSum (fun k : NonNegInt ↦ x k * z ^ (-k : ℤ)) a := by
+    exact Equiv.hasSum_iff nonNegInt_nat_equiv.symm (a := a) (
+      f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
 
-  -- We tackle this by partitioning the sum into the negative terms and non-negative terms.
-  -- We then show each infinite sum has a value.
+theorem ZTUnilateral_tsum_equiv {z : ℂ} (x : Signal) :
+  (ZTransformUnilateral x) z = (ZTransformUnilateral' x) z := by
+    exact Equiv.tsum_eq nonNegInt_nat_equiv.symm (
+      fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ)
+    )
 
-  -- Show that ∑' (k < 0), u k * z ^ (-k) = 0
-  have s_neg : HasSum (fun k : NegInt ↦ f k) 0 := by
-    -- Show u k * z ^ (-k) = 0 forall k.
-    have f_zero : ∀ (k : NegInt), f k = 0 := by
-      simp[f, u, unit_step]
-      intro a ha _
-      have : a < 0 := by assumption
-      linarith
+theorem zt_sum_unit_step {z : ℂ} {f : Signal} {S : ℂ} :
+    HasSum (fun (k : ℤ) ↦ u k * f k * z ^ (-k : ℤ)) S ↔
+    HasSum (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) S := by
 
-    -- Since the terms of the sum are all zero, the sum must also be zero
-    simp[f_zero]
-    exact hasSum_zero
+      have h_ind : ∀ k : ℤ, NonNegInt.indicator 1 k * f k * z ^ (-k) =
+        NonNegInt.indicator (fun k' ↦ f k' * z ^ (-k')) k := by
+          intro k
+          unfold NonNegInt
+          by_cases k_pos : k ≥ 0
+          <;> simp[k_pos]
 
-  -- Show that ∑' (k ≥ 0) u k * z ^ (-k) = 1 / (1 - z⁻¹)
-  have s_nonneg : HasSum (fun (k : NonNegInt) ↦ f k) (1 / (1 - z⁻¹)) := by
-    -- This first looks confusing, but we're just trying to change the sum from:
-    -- ∑' (k : NonNegInt) f k → ∑' (n : ℕ) f n.
+      apply Iff.intro
+      . intro hmp
+        simp only[u, unit_step_equiv_indicator, h_ind] at hmp
 
-    -- Lean is sadly not smart enough to understand these are equivalent.
-    refine' (hasSum_equiv
-      (f := fun k : NonNegInt ↦ f k)
-      (a := (1 / (1 - z⁻¹))) nonNegInt_nat_equiv.symm).mp _
+        have := by exact (hasSum_subtype_iff_indicator
+            (s := NonNegInt) (f := fun k' ↦ f k' * z ^ (-k')) (a := S)).mpr hmp
+        change HasSum (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ)) S at this
 
-    -- It doesn't get you all the way there... but further simplification will do it.
+        have := by exact (Equiv.hasSum_iff
+          (a := S)
+          (f := fun k : NonNegInt ↦ f k * z ^ (-k : ℤ))
+          (nonNegInt_nat_equiv.symm)).mpr this
 
-    -- Since we're on the positive side, the step function is 1
-    have u_one : ∀ (k : NonNegInt), u k = 1 := by
-      simp[u]
-      intros
-      assumption
+        change HasSum (fun n : ℕ ↦ f ↑n * z ^ (-n : ℤ)) S at this
+        exact this
 
-    -- ‖z‖ > 1 → ‖z⁻¹‖ < 1
-    have hz : ‖z⁻¹‖ < 1 := by
-      rw[norm_inv, inv_lt_comm₀, inv_one]
-      <;> linarith
+      . intro hmpr
+        let g := fun k : ℤ ↦ (u k * f k * z ^ (-k : ℤ))
 
-    -- Do some simplification here. We want the sum to be in the form:
-    -- ∑ (n : ℕ) (z⁻¹) ^ n since that's a geometric series.
-    simp[f, u_one]
-    simp only[←inv_cpow_int]
-    change HasSum (fun n : ℕ ↦ z⁻¹ ^ n) (1 - z⁻¹)⁻¹
+        have s_neg : HasSum (fun k : NegInt ↦ g k) 0 := by
+          have g_zero : ∀ (k : NegInt), g k = 0 := by
+            intro ⟨i, _⟩
+            simp[g, u, unit_step]
+            have : i < 0 := by assumption
+            intro
+            linarith
 
-    -- Apply the geometric series theorem.
-    -- ∑ (n : ℕ) a ^ n = 1 / (1 - a) if ‖a‖ < 1 for a = z⁻¹
-    exact hasSum_geometric_of_norm_lt_one hz
+          -- Since the terms of the sum are all zero, the sum must also be zero
+          simp[g_zero]
+          exact hasSum_zero
 
-  --Rewrite the original sum so its in terms of our sets.
-  rw[←tsum_univ, ←neg_nonneg_union]
+        have s_nonneg : HasSum (fun k : NonNegInt ↦ u k * f k * z ^ (-k : ℤ)) S := by
+          simp only[u, unit_step_of_nonneg, one_mul]
+          exact (ZTUnilateral_hasSum_equiv f).mp hmpr
 
-  -- Show that we can break the sum up into its non-negative and negative parts.
-  -- ∑' (a : α) f a + ∑' (b : β) f b = ∑' (c : α ∪ β) f c
-  have : (tsum fun (k : ↑(NegInt ∪ NonNegInt)) ↦ f ↑k) =
-    ∑' (k : ↑NegInt), f ↑k + ∑' (k : ↑NonNegInt), f ↑k :=
-    -- This only works if α and β are disjoint and that
-    -- ∑' (a : α) f a and ∑' (b : β) f b are well-defined.
-    tsum_union_disjoint int_neg_nonneg_disjoint s_neg.summable s_nonneg.summable
+        have := HasSum.add_disjoint int_neg_nonneg_disjoint (a := 0) (b := S)
+          (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ)) s_neg s_nonneg
 
-  -- Break up the sum, then apply the results we got earlier for each sub-sum.
-  rw[this, s_neg.tsum_eq, s_nonneg.tsum_eq, zero_add]
+        rw[zero_add] at this
+        change HasSum (fun (k : ↑(NegInt ∪ NonNegInt)) ↦ u k * f k * z ^ (-k : ℤ)) S at this
+        rw[neg_nonneg_union] at this
+        exact hasSum_univ.mp this
+
+theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by
+  rw[HasZTransform]
+
+  have : ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) := by simp
+  simp only [this]
+
+  refine' zt_sum_unit_step.mpr _
+  simp
+  simp only[←inv_cpow_nat]
+
+  refine' hasSum_geometric_of_norm_lt_one _
+  rw[norm_inv, inv_lt_comm₀] <;> linarith
 
 
 noncomputable def discrete_convolution (f g : Signal) : Signal :=
   fun k => ∑' m : ℤ, f m * g (k - m)
 
-def HasZTransform {z : ℂ} (f : Signal) := Summable fun k ↦ f k * z ^ (-k)
+def ZTransformable {z : ℂ} (f : Signal) := Summable fun k ↦ f k * z ^ (-k)
 
 @[simp]
-theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @HasZTransform z f₁) (hf₂ : @HasZTransform z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
+theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
   simp only[ZTransform]
   calc
   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
