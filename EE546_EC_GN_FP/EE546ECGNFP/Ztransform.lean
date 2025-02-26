@@ -1,5 +1,6 @@
 import Mathlib.Tactic
 import Mathlib.Data.Complex.Abs
+import Paperproof
 
 open Complex
 
@@ -16,30 +17,6 @@ def PosInt : Set ℤ := { k | k > 0 }
 def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
-
-instance : Coe PosInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe NonNegInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe NegInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe NonPosInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe PosInt Nat where
-  coe n := match n with
-    | ⟨i, _⟩ => Int.toNat i
-
-instance : Coe NonNegInt Nat where
-  coe n := match n with
-    | ⟨i, _⟩ => Int.toNat i
 
 /--
 The union of non-positive integers and positive integers is ℤ.
@@ -175,7 +152,7 @@ lemma int_nonneg_neg_disjoint : Disjoint NonNegInt NegInt := by
   exact Disjoint.symm int_neg_nonneg_disjoint
 
 @[simp]
-noncomputable def zt_kernel_of (x : Signal) (z : ℂ) : ℤ → ℂ :=
+noncomputable def zt_kernel (x : Signal) (z : ℂ) : ℤ → ℂ :=
   fun k ↦ x (k) * z^(-k : ℤ)
 
 @[simp]
@@ -289,17 +266,6 @@ theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : @HasZTransform z (fun k ↦ δ 
 
   exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
--- For some reason, this isn't a theorem in Mathlib.
--- Mathlib has a version of this where n is complex, but that
--- introduces an additional constraint that arg x ≠ π. No such
--- restriction happens so long as the power is an integer.
-theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
-  simp -- though mathlib does have enough theorems to solve by simp...
-
-theorem inv_cpow_nat (x : ℂ) (n : ℕ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
-  simp -- though mathlib does have enough theorems to solve by simp...
-
-
 def univ_equiv (α : Type*) : α ≃ @Set.univ α where
   toFun := fun a ↦ ⟨a, by trivial⟩
   invFun := fun
@@ -352,7 +318,15 @@ theorem zt_sum_unit_step {z : ℂ} {f : Signal} {S : ℂ} :
         exact this
 
       . intro hmpr
-        let g := fun k : ℤ ↦ (u k * f k * z ^ (-k : ℤ))
+        rw[←add_zero S]
+        simp only[←hasSum_univ (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ))]
+        rw[←neg_nonneg_union]
+
+        refine HasSum.add_disjoint int_neg_nonneg_disjoint (a := S) (b := 0)
+          (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ)) ?S_nonneg ?S_neg
+
+        . change HasSum (fun k : NonNegInt ↦ u k * f k * z ^ (-k : ℤ)) S
+
 
         have s_neg : HasSum (fun k : NegInt ↦ g k) 0 := by
           have g_zero : ∀ (k : NegInt), g k = 0 := by
@@ -370,23 +344,20 @@ theorem zt_sum_unit_step {z : ℂ} {f : Signal} {S : ℂ} :
           simp only[u, unit_step_of_nonneg, one_mul]
           exact (ZTUnilateral_hasSum_equiv f).mp hmpr
 
-        have := HasSum.add_disjoint int_neg_nonneg_disjoint (a := 0) (b := S)
-          (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ)) s_neg s_nonneg
 
-        rw[zero_add] at this
-        change HasSum (fun (k : ↑(NegInt ∪ NonNegInt)) ↦ u k * f k * z ^ (-k : ℤ)) S at this
-        rw[neg_nonneg_union] at this
-        exact hasSum_univ.mp this
+
+
 
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by
   rw[HasZTransform]
 
-  have : ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) := by simp
+  have : ∀ k, u k * z ^ (-k) = u k * cccccbnkibrghdtluhttifkucvkkulfdkfrtivkcelnu
+  1 * z ^ (-k) := by simp
   simp only [this]
 
   refine' zt_sum_unit_step.mpr _
   simp
-  simp only[←inv_cpow_nat]
+  simp only[←inv_pow]
 
   refine' hasSum_geometric_of_norm_lt_one _
   rw[norm_inv, inv_lt_comm₀] <;> linarith
