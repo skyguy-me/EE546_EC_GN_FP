@@ -389,8 +389,7 @@ theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k
 theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
   sorry
 
-theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) :
-  𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
+theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
   simp only [ZTransform]
 
   have h : ∀ k, a^(-k) * f k * z^(-k) = f k * (a * z)^(-k) := by
@@ -400,13 +399,9 @@ theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) :
       _ = f k * (a * z)^(-k) := by sorry
 
 
+  rw [tsum_congr h]
 
-  -- rw [tsum_congr]
 
-  -- ring_nf
-  -- exact
-
-sorry
 
 @[simp]
 theorem ZTransform_convolution (f g : Signal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
