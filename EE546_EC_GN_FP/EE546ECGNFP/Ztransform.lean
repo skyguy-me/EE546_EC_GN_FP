@@ -1,5 +1,6 @@
 import Mathlib.Tactic
 import Mathlib.Data.Complex.Abs
+import Paperproof
 
 open Complex
 
@@ -16,30 +17,6 @@ def PosInt : Set ℤ := { k | k > 0 }
 def NonNegInt : Set ℤ := { k | k ≥ 0 }
 def NegInt : Set ℤ := { k | k < 0 }
 def NonPosInt : Set ℤ := { k | k ≤ 0 }
-
-instance : Coe PosInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe NonNegInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe NegInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe NonPosInt Int where
-  coe n := match n with
-    | ⟨i, _⟩ => i
-
-instance : Coe PosInt Nat where
-  coe n := match n with
-    | ⟨i, _⟩ => Int.toNat i
-
-instance : Coe NonNegInt Nat where
-  coe n := match n with
-    | ⟨i, _⟩ => Int.toNat i
 
 /--
 The union of non-positive integers and positive integers is ℤ.
@@ -175,7 +152,7 @@ lemma int_nonneg_neg_disjoint : Disjoint NonNegInt NegInt := by
   exact Disjoint.symm int_neg_nonneg_disjoint
 
 @[simp]
-noncomputable def zt_kernel_of (x : Signal) (z : ℂ) : ℤ → ℂ :=
+noncomputable def zt_kernel (x : Signal) (z : ℂ) : ℤ → ℂ :=
   fun k ↦ x (k) * z^(-k : ℤ)
 
 @[simp]
@@ -289,17 +266,6 @@ theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : @HasZTransform z (fun k ↦ δ 
 
   exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
--- For some reason, this isn't a theorem in Mathlib.
--- Mathlib has a version of this where n is complex, but that
--- introduces an additional constraint that arg x ≠ π. No such
--- restriction happens so long as the power is an integer.
-theorem inv_cpow_int (x : ℂ) (n : ℤ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
-  simp -- though mathlib does have enough theorems to solve by simp...
-
-theorem inv_cpow_nat (x : ℂ) (n : ℕ) : x⁻¹ ^ n = (x ^ n)⁻¹ := by
-  simp -- though mathlib does have enough theorems to solve by simp...
-
-
 def univ_equiv (α : Type*) : α ≃ @Set.univ α where
   toFun := fun a ↦ ⟨a, by trivial⟩
   invFun := fun
@@ -324,59 +290,49 @@ theorem ZTUnilateral_tsum_equiv {z : ℂ} (x : Signal) :
       fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ)
     )
 
+theorem indicator_one_mul {α β : Type*} [Semiring β] {A : Set α} (a : α) (f : α → β) :
+    A.indicator 1 a * f a = A.indicator (fun a' ↦ f a') a := by
+      by_cases ha : a ∈ A
+      <;> simp[ha]
+
+
 theorem zt_sum_unit_step {z : ℂ} {f : Signal} {S : ℂ} :
     HasSum (fun (k : ℤ) ↦ u k * f k * z ^ (-k : ℤ)) S ↔
     HasSum (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) S := by
 
-      have h_ind : ∀ k : ℤ, NonNegInt.indicator 1 k * f k * z ^ (-k) =
-        NonNegInt.indicator (fun k' ↦ f k' * z ^ (-k')) k := by
-          intro k
-          unfold NonNegInt
-          by_cases k_pos : k ≥ 0
-          <;> simp[k_pos]
-
       apply Iff.intro
       . intro hmp
+
+        have h_ind : ∀ k : ℤ, NonNegInt.indicator 1 k * (f k * z ^ (-k)) =
+          NonNegInt.indicator (fun k' ↦ f k' * z ^ (-k')) k := by
+            exact indicator_one_mul (A := NonNegInt) (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))
+
+        simp only [mul_assoc] at hmp
+        --simp only [indicator_one_mul (A := NonNegInt) (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))]
         simp only[u, unit_step_equiv_indicator, h_ind] at hmp
+        simp only[ZTUnilateral_hasSum_equiv]
 
-        have := by exact (hasSum_subtype_iff_indicator
-            (s := NonNegInt) (f := fun k' ↦ f k' * z ^ (-k')) (a := S)).mpr hmp
-        change HasSum (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ)) S at this
-
-        have := by exact (Equiv.hasSum_iff
-          (a := S)
-          (f := fun k : NonNegInt ↦ f k * z ^ (-k : ℤ))
-          (nonNegInt_nat_equiv.symm)).mpr this
-
-        change HasSum (fun n : ℕ ↦ f ↑n * z ^ (-n : ℤ)) S at this
-        exact this
+        exact (hasSum_subtype_iff_indicator).mpr hmp
 
       . intro hmpr
-        let g := fun k : ℤ ↦ (u k * f k * z ^ (-k : ℤ))
+        simp only[←hasSum_univ (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ))]
+        rw[←neg_nonneg_union]
 
-        have s_neg : HasSum (fun k : NegInt ↦ g k) 0 := by
-          have g_zero : ∀ (k : NegInt), g k = 0 := by
-            intro ⟨i, _⟩
-            simp[g, u, unit_step]
-            have : i < 0 := by assumption
-            intro
-            linarith
+        convert HasSum.add_disjoint int_neg_nonneg_disjoint (a := 0) (b := S)
+          (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ)) ?S_neg ?S_nonneg
 
-          -- Since the terms of the sum are all zero, the sum must also be zero
-          simp[g_zero]
-          exact hasSum_zero
+        . rw[zero_add]
 
-        have s_nonneg : HasSum (fun k : NonNegInt ↦ u k * f k * z ^ (-k : ℤ)) S := by
-          simp only[u, unit_step_of_nonneg, one_mul]
-          exact (ZTUnilateral_hasSum_equiv f).mp hmpr
+        . change HasSum (fun k : NegInt ↦ u k * f k * z ^ (-k : ℤ)) 0
+          convert hasSum_zero with k
+          calc
+            u ↑k * f ↑k * z ^ (-k : ℤ) = 0 * f ↑k * z ^ (-k : ℤ) := by rw[u, unit_step_of_neg]
+            _ = 0 := by rw[zero_mul, zero_mul]
 
-        have := HasSum.add_disjoint int_neg_nonneg_disjoint (a := 0) (b := S)
-          (f := fun k : ℤ ↦ u k * f k * z ^ (-k : ℤ)) s_neg s_nonneg
+        . change HasSum (fun k : NonNegInt ↦ u k * f k * z ^ (-k : ℤ)) S
+          simp only[u, unit_step_of_nonneg, one_mul, ←ZTUnilateral_hasSum_equiv]
+          exact hmpr
 
-        rw[zero_add] at this
-        change HasSum (fun (k : ↑(NegInt ∪ NonNegInt)) ↦ u k * f k * z ^ (-k : ℤ)) S at this
-        rw[neg_nonneg_union] at this
-        exact hasSum_univ.mp this
 
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by
   rw[HasZTransform]
@@ -386,7 +342,7 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (
 
   refine' zt_sum_unit_step.mpr _
   simp
-  simp only[←inv_cpow_nat]
+  simp only[←inv_pow]
 
   refine' hasSum_geometric_of_norm_lt_one _
   rw[norm_inv, inv_lt_comm₀] <;> linarith
