@@ -368,11 +368,17 @@ theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @ZTransformabl
 
 @[simp]
 theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
-  rw [ZTransform]
-  have : (fun k => f (k - n) * z ^ (-k)) = (fun k => f k * z ^ (-(k + n))) := by
-    simp
-    funext k
-    sorry
+  simp only[ZTransform]
+
+  let g := fun k : ℤ => f (k - n) * z ^ (-k)
+  let h := fun m : ℤ => f m * z ^ (-(m + n))
+
+  have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
+    ext m
+    -- ring_nf
+
+
+
   sorry
 
 @[simp]
@@ -383,9 +389,24 @@ theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k
 theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
   sorry
 
-@[simp]
-theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
-  sorry
+theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) :
+  𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
+  simp only [ZTransform]
+
+  have h : ∀ k, a^(-k) * f k * z^(-k) = f k * (a * z)^(-k) := by
+    intro k -- a ^ (-k) * f k * z ^ (-k) = f k * (a * z) ^ (-k)
+    calc a^(-k) * f k * z^(-k)
+      _ = f k * a^(-k) * z^(-k) := by ring
+      _ = f k * (a * z)^(-k) := by sorry
+
+
+
+  -- rw [tsum_congr]
+
+  -- ring_nf
+  -- exact
+
+sorry
 
 @[simp]
 theorem ZTransform_convolution (f g : Signal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
