@@ -92,8 +92,6 @@ elab "sum_simp" : tactic => do
 
   match target.getAppFnArgs with
   | (``HasSum, #[α, β, _, _, f, a]) =>
-    --logInfo f
-    --logInfo a
     match f with
     | .lam _ _ body _ =>
       let numAdditions := countAdditions body
@@ -102,22 +100,69 @@ elab "sum_simp" : tactic => do
         return
 
       let S ← @generateSum α (numAdditions)
+      logInfo S
       let eq_a ← Meta.mkEq a S
       let eq_a_syn ← eq_a.toSyntax
       Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn := ?Sa))
       splitAdditions β body numAdditions
       Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try simp only[←hasSum_trivial_comp] ))
+      Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try assumption))
+      --Lean.Elab.Tactic.evalTactic (← `(tactic| assumption))
     | _ => throwError "2: Goal type is not of the form `HasSum f S`"
   | _ => throwError "Goal type is not of the form `HasSum f S`"
+
+example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
+  {f1 f2 f3 f4 : ℕ → α} {a1 a2 a3 a4 A : α}
+  (ha : a1 + a2 + a3 + a4 = A)
+  (hf1 : HasSum f1 a1) (hf2 : HasSum f2 a2) (hf3 : HasSum f3 a3) (hf4 : HasSum f4 a4) :
+  HasSum (fun n => f1 n + f2 n + f3 n + f4 n) A := by
+
+  have : HasSum (fun n => f1 n + f2 n) (a1 + a2) := by exact HasSum.add hf1 hf2
+  have : HasSum (fun n => f1 n + f2 n + f3 n) (a1 + a2 + a3) := by exact HasSum.add this hf3
+
+  have : HasSum (fun n => f1 n + f2 n + f3 n + f4 n) (a1 + a2 + a3 + a4) := by exact HasSum.add this hf4
+
+  convert this
+
+
 
 example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   {f1 f2 f3 f4 : ℕ → ℝ}
   (hf1 : HasSum f1 1) (hf2 : HasSum f2 3) (hf3 : HasSum f3 0) (hf4 : HasSum f4 (-2)) :
   HasSum (fun n => f1 n + f2 n + f3 n + f4 n) 2 := by
     sum_simp
-    . exact hf1
-    . exact hf2
-    . exact hf3
-    . exact hf4
     . linarith
 
+example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
+  {f1 f2 f3 f4 : ℕ → α} {a1 a2 a3 a4 A : α}
+  (hf1 : HasSum f1 a1) (hf2 : HasSum f2 a2) (hf3 : HasSum f3 a3) (hf4 : HasSum f4 a4) :
+  HasSum (fun n => f1 n + f2 n + f3 n + f4 n) A := by
+
+  have : A = ?S1 + ?S2 + ?S3 + ?S4 := ?hS
+
+  convert HasSum.add (f := fun n => f1 n + f2 n + f3 n) (g := f4) (b := ?S4) ?_ ?$hS4
+
+  refine HasSum.add (f := fun n => f1 n + f2 n) (g := f3) (b := ?s3) ?_ ?hs3
+
+  refine HasSum.add (f := f1) (g := f2) (a := ?s1) (b := ?s2) ?hs1 ?hs2
+
+  . exact hf1
+
+
+
+example : HasSum (fun (n : ℕ) => 2 * (1/2 : ℝ)^n + 2 * (1/3 : ℝ)^n) (7 : ℝ) := by
+  sum_simp
+  . convert (hasSum_mul_left_iff (a₁ := ?_) (a₂ := 2) (f := fun n ↦  (1/2 : ℝ)^n) ?_).mpr ?_
+    . exact Ne.symm (NeZero.ne' 2)
+    . refine hasSum_geometric_of_abs_lt_one (r := (1/2 : ℝ)) ?_
+      rw[abs_of_nonneg]
+      . exact one_half_lt_one
+      . simp
+
+  . convert (hasSum_mul_left_iff (a₁ := ?_) (a₂ := 2) (f := fun n ↦  (1/3 : ℝ)^n) ?_).mpr ?_
+    . exact Ne.symm (NeZero.ne' 2)
+    . refine hasSum_geometric_of_abs_lt_one (r := (1/3 : ℝ)) ?_
+      rw[abs_of_nonneg]
+      <;> linarith
+
+  . linarith
