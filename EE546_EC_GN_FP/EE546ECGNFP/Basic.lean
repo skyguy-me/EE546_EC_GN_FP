@@ -126,27 +126,27 @@ partial def reduceMultiplicationsLeft (α' β' expr : Expr) : TacticM Unit := do
 def factor_left (f : Expr) : TacticM Unit := do
   let .lam var α body binderInfo := f | throwError "asdf"
 
-  let (dependentTerms, independentTerms) :=
-    match body.getAppFnArgs with
-    | (``HMul.hMul, #[α, β, γ, instHMul, mull, mulr]) | (``Mul.mul, #[_, instMul, mull, mulr]) =>
-      let lhsDep := dependsOn mull var
-      let rhsDep := dependsOn mulr var
+  --let (dependentTerms, independentTerms) :=
+    --match body.getAppFnArgs with
+    --| (``HMul.hMul, #[α, β, γ, instHMul, mull, mulr]) | (``Mul.mul, #[_, instMul, mull, mulr]) =>
+      --let lhsDep := dependsOn mull var
+      --let rhsDep := dependsOn mulr var
 
-      if lhsDep && rhsDep then
-        -- Both terms depend on the variable; no factoring possible
-        return ([body], [])
-      else if lhsDep then
-        -- `lhs` depends on `var`, `rhs` is independent
-        return ([mull], [mulr])
-      else if rhsDep then
-        -- `rhs` depends on `var`, `lhs` is independent
-        return ([mull], [mulr])
-      else
-        -- Neither term depends on `var`; treat as independent
-        return ([], [mull, mulr])
-    | _ =>
-      -- Not a multiplication; treat as dependent
-      return ([body], [])
+      --if lhsDep && rhsDep then
+         --Both terms depend on the variable; no factoring possible
+        --return ([body], [])
+      --else if lhsDep then
+         --`lhs` depends on `var`, `rhs` is independent
+        --return ([mull], [mulr])
+      --else if rhsDep then
+         --`rhs` depends on `var`, `lhs` is independent
+        --return ([mull], [mulr])
+      --else
+         --Neither term depends on `var`; treat as independent
+        --return ([], [mull, mulr])
+    --| _ =>
+       --Not a multiplication; treat as dependent
+      --return ([body], [])
 
 
 
