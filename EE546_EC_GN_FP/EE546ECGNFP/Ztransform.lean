@@ -1,8 +1,9 @@
 import Mathlib.Tactic
+import Mathlib.Algebra.BigOperators.Basic
 import Mathlib.Data.Complex.Abs
 import Paperproof
 
-open Complex
+open Complex BigOperators
 
 set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
@@ -389,9 +390,25 @@ theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k
 theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
   sorry
 
+class ZTransformable (f : Signal) (z : ℂ) : Prop where
+  summable : Summable (λ k : ℤ, f k * z^(-k))
+
+instance (f : Signal) (z : ℂ) [ZTransformable f z] : HasZTransform f z (ZTransform f z) :=
+  by
+    rw [HasZTransform, ZTransform]
+    exact (ZTransformable.summable f z).hasSum
+
+
 theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
 
-  simp only [hasZTransform]
+  rw [HasZTransform, ZTransform]
+  refine' hasSum_congr (λ k, _)
+
+  calc a^(-k) * f k * z^(-k)
+     = f k * (a^(-k) * z^(-k))  : by rw [mul_comm (a^(-k)) (f k)]
+   _ = f k * (a * z)^(-k)     : by rw [mul_assoc, ← mul_zpow, mul_comm a z]
+
+
   apply tsum_congr
   intro k
   calc
@@ -399,8 +416,9 @@ theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(
       = f k * a^(-k) * z^(-k) : by rw [mul_assoc]
     _ = f k * (a * z)^(-k) : by rw [← mul_pow]  -- Apply exponentiation rule
 
-  -- Step 2: Conclude that both sides represent the same infinite sum
-  rfl
+
+
+  -- rfl
 
   -- simp only [ZTransform]
 
