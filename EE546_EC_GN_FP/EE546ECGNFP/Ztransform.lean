@@ -400,22 +400,23 @@ def ZTransformable {z : ℂ} (f : Signal) := Summable fun k ↦ f k * z ^ (-k)
 
 -- theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by sorry
 
-theorem ZTransform_exp_mul (f : Signal) (z : ℂ) (a : ℂ) (F : ℂ → ℂ):
- @HasZTransform  z f (F z) →
- @HasZTransform z (λ k ↦ a^ (-k) * f k) (F (z * a) ):= by
-
+theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (F : ℂ → ℂ) (ROC : Set ℂ) :
+ (∀ (z : ROC), (@HasZTransform  z f (F z))) →
+ (∀ z a : ℂ, z * a ∈ ROC → (@HasZTransform z (λ k ↦ a^ (-k) * f k) (F (z * a)))) := by
   unfold HasZTransform -- HasSum (fun k ↦ f k * z ^ (-k)) (F z) → HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
   intro h -- HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
+  intro z a hza
   have :  (λ k ↦ a ^ (-k) * f k * z ^ (-k)) =  (λ k ↦ (a*z)^(-k) * f k) := by
     ext k
-
     calc
-      a ^ (-k) * f k * z ^ (-k) = a ^ (-k) * z ^ (-k) *  f k := by ring
-      _ = (a *z)^ (-k)  *  f k :=  by  rw[mul_zpow]
+      a ^ (-k) * f k * z ^ (-k)
+        =  f k * a ^ (-k) * z ^ (-k) := by ring
+      _ = f k * (a * z)^ (-k) :=  by rw[mul_zpow, mul_assoc]
+      _ = (a * z) ^ (-k) * f k := by rw[mul_comm]
 
-  simp[this] -- HasSum (fun k ↦ (a ^ k)⁻¹ * f k * (z ^ k)⁻¹) (F (z * a))
-
-
+  simp only[this]
+  simp only[mul_comm] -- asSum (fun k ↦ (a * z) ^ (-k) * f k) (F (z * a))
+  exact h ⟨z * a, hza⟩
 
 
 
