@@ -1,9 +1,9 @@
 import Mathlib.Tactic
-import Mathlib.Algebra.BigOperators.Basic
+-- import Mathlib.Algebra.BigOperators.Basic
 import Mathlib.Data.Complex.Abs
-import Paperproof
+-- import Paperproof
 
-open Complex BigOperators
+open Complex
 
 set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
@@ -354,68 +354,70 @@ noncomputable def discrete_convolution (f g : Signal) : Signal :=
 
 def ZTransformable {z : ℂ} (f : Signal) := Summable fun k ↦ f k * z ^ (-k)
 
-@[simp]
-theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
-  simp only[ZTransform]
-  calc
-  ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
-    by group
+-- @[simp]
+-- theorem ZTransform_linear {z : ℂ} (f₁ f₂ : Signal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
+--   simp only[ZTransform]
+--   calc
+--   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
+--     by group
 
-  _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
-    rw[tsum_add]
+--   _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
+--     rw[tsum_add]
 
-  _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
-  _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
+--   _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
+--   _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
 
-@[simp]
-theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
-  simp only[ZTransform]
+-- @[simp]
+-- theorem ZTransform_time_delay (f : Signal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
+  -- simp only[ZTransform]
 
-  let g := fun k : ℤ => f (k - n) * z ^ (-k)
-  let h := fun m : ℤ => f m * z ^ (-(m + n))
+  -- let g := fun k : ℤ => f (k - n) * z ^ (-k)
+  -- let h := fun m : ℤ => f m * z ^ (-(m + n))
 
-  have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
-    ext m
-    -- ring_nf
-
-
-
-  sorry
-
-@[simp]
-theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
-  sorry
-
-@[simp]
-theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
-  sorry
-
-class ZTransformable (f : Signal) (z : ℂ) : Prop where
-  summable : Summable (λ k : ℤ, f k * z^(-k))
-
-instance (f : Signal) (z : ℂ) [ZTransformable f z] : HasZTransform f z (ZTransform f z) :=
-  by
-    rw [HasZTransform, ZTransform]
-    exact (ZTransformable.summable f z).hasSum
+  -- have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
+  --   ext m
+  --   -- ring_nf
 
 
-theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
 
+--   sorry
+
+-- @[simp]
+-- theorem ZTransform_time_advance_one (f : Signal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
+--   sorry
+
+-- @[simp]
+-- theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
+--   sorry
+
+-- class ZTransformable (f : Signal) (z : ℂ) : Prop where
+--   summable : Summable (λ k : ℤ, f k * z^(-k))
+
+-- instance (f : Signal) (z : ℂ) [ZTransformable f z] : HasZTransform f z (ZTransform f z) :=
+--   by
+--     rw [HasZTransform, ZTransform]
+--     exact (ZTransformable.summable f z).hasSum
+
+-- theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by sorry
+
+theorem ZTransform_exp_mul (f : Signal) (z : ℂ) (a : ℂ) : @HasZTransform z (λ k ↦ a^(-k) * f k) ( 𝓩 f (a * z)) := by
   rw [HasZTransform, ZTransform]
-  refine' hasSum_congr (λ k, _)
-
-  calc a^(-k) * f k * z^(-k)
-     = f k * (a^(-k) * z^(-k))  : by rw [mul_comm (a^(-k)) (f k)]
-   _ = f k * (a * z)^(-k)     : by rw [mul_assoc, ← mul_zpow, mul_comm a z]
+  simp -- HasSum (fun k ↦ (a ^ k)⁻¹ * f k * (z ^ k)⁻¹) (∑' (k : ℤ), f k * ((a * z) ^ k)⁻¹)
 
 
-  apply tsum_congr
-  intro k
-  calc
-    a^(-k) * f k * z^(-k)
-      = f k * a^(-k) * z^(-k) : by rw [mul_assoc]
-    _ = f k * (a * z)^(-k) : by rw [← mul_pow]  -- Apply exponentiation rule
+  sorry
 
+
+
+
+
+
+  -- unfold HasZTransform
+
+
+  -- calc a^(-k) * f k * z^(-k)
+  --    = f k * (a^(-k) * z^(-k))  : by rw [mul_comm (a^(-k)) (f k)]
+  --  _ = f k * (a * z)^(-k)     : by rw [mul_assoc, ← mul_zpow, mul_comm a z]
 
 
   -- rfl
@@ -433,15 +435,15 @@ theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(
 
 
 
-@[simp]
-theorem ZTransform_convolution (f g : Signal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
-  rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
-  simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
+-- @[simp]
+-- theorem ZTransform_convolution (f g : Signal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
+--   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
+--   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
 
 
-  let h := fun k => ∑' m : ℤ, f m * g (k - m)
-  let t := fun k => h k * z ^ (-k)
-  sorry
+--   let h := fun k => ∑' m : ℤ, f m * g (k - m)
+--   let t := fun k => h k * z ^ (-k)
+--   sorry
 
 
 -- theorem ZTransform_IVT: := by
