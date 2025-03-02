@@ -390,16 +390,28 @@ theorem ZTransform_time_advance_n (f : Signal) (n : ℕ) (z : ℂ) : 𝓩 (fun k
   sorry
 
 theorem ZTransform_exp_mul (f : Signal) (a : ℂ) (z : ℂ) : 𝓩 (fun k => a^(-k) * f k) z = 𝓩 f (a * z) := by
-  simp only [ZTransform]
 
-  have h : ∀ k, a^(-k) * f k * z^(-k) = f k * (a * z)^(-k) := by
-    intro k -- a ^ (-k) * f k * z ^ (-k) = f k * (a * z) ^ (-k)
-    calc a^(-k) * f k * z^(-k)
-      _ = f k * a^(-k) * z^(-k) := by ring
-      _ = f k * (a * z)^(-k) := by sorry
+  simp only [hasZTransform]
+  apply tsum_congr
+  intro k
+  calc
+    a^(-k) * f k * z^(-k)
+      = f k * a^(-k) * z^(-k) : by rw [mul_assoc]
+    _ = f k * (a * z)^(-k) : by rw [← mul_pow]  -- Apply exponentiation rule
+
+  -- Step 2: Conclude that both sides represent the same infinite sum
+  rfl
+
+  -- simp only [ZTransform]
+
+  -- have h : ∀ k, a^(-k) * f k * z^(-k) = f k * (a * z)^(-k) := by
+  --   intro k -- a ^ (-k) * f k * z ^ (-k) = f k * (a * z) ^ (-k)
+  --   calc a^(-k) * f k * z^(-k)
+  --     _ = f k * a^(-k) * z^(-k) := by ring
+  --     _ = f k * (a * z)^(-k) := by sorry
 
 
-  rw [tsum_congr h]
+  -- rw [tsum_congr h]
 
 
 
