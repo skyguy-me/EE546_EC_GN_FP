@@ -248,6 +248,7 @@ theorem zt_FinalValueTheorem
     intro hx_causal
     intro hxf
     simp only[ZTransform]
+    sorry
 
 -- @[simp]
 -- theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
