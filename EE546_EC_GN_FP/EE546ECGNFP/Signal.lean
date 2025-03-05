@@ -1,0 +1,136 @@
+import Mathlib.Data.Complex.Basic
+import Mathlib.Data.Complex.Norm
+import Mathlib.Topology.Filter
+import Mathlib.Topology.MetricSpace.Basic
+import Mathlib.Analysis.Normed.Group.Basic
+
+import EE546ECGNFP.Defs
+
+open Complex Filter Topology Controls
+
+namespace Controls.Discrete
+
+-- Because we're al engineers here.
+def j : ℂ := I
+
+def DiscreteSignal : Type := ℤ → ℂ
+
+noncomputable def discrete_convolution (f g : DiscreteSignal) : DiscreteSignal :=
+  fun k => ∑' m : ℤ, f m * g (k - m)
+
+def IsCausal (x : DiscreteSignal) := ∀ k : ℤ, k < 0 → x k = 0
+
+def IsAnticausal (x : DiscreteSignal) := ∀ k ∈ PosInt, x k = 0
+
+def IsBoundedSignal (x : DiscreteSignal) := ∃ M : ℝ, ∀ k : ℤ, ‖x k‖ < M
+
+def IsStable (x : DiscreteSignal) := ∃ xf : ℂ, Tendsto x atTop (𝓝 xf)
+
+theorem isStableAndCausal_implies_isBounded (x : DiscreteSignal) :
+    IsStable x → IsCausal x → IsBoundedSignal x := by
+  intro hs hc
+  obtain ⟨xf, hxf⟩ := hs
+  simp only[Metric.tendsto_atTop] at hxf
+  have : ∃ N, ∀ n ≥ N, dist (x n) xf < 1 := by
+    convert hxf 1
+    simp only[zero_lt_one, true_implies]
+
+  obtain ⟨N, hN⟩ := this
+  change ∀ n ≥ N, ‖x n - xf‖ < 1 at hN
+
+  have : ∃ M1 : ℝ, ∀ n < N, ‖x n‖ < M1 := by
+    by_cases hN_lt_zero : N < 0
+    . use 1
+      intro n hn
+      have hn_lt_zero : n < 0 := by exact Int.lt_trans hn hN_lt_zero
+      simp only[hc n, hn_lt_zero]
+      simp[norm_zero, zero_lt_one]
+    . have hN_gte_zero : N ≥ 0 := by exact Int.not_lt.mp hN_lt_zero
+      let Ns := Finset.range (Int.toNat (N + 1))
+      have hNs_nonempty : Finset.Nonempty Ns := by
+        refine Finset.nonempty_range_iff.mpr ?_
+        have : N + 1 > 0 := by exact Int.lt_add_one_iff.mpr hN_gte_zero
+        have : ((N + 1).toNat : ℤ) = N + 1 := by
+          convert Int.toNat_of_nonneg ?_
+          exact Int.le_add_one hN_gte_zero
+
+        intro hn_succ_zero
+        have : ((N + 1).toNat : ℤ) = 0 := by exact congrArg Nat.cast hn_succ_zero
+        linarith
+
+      let X := Ns.image (fun n : ℕ ↦ ‖x n‖)
+      let M0 := X.max' ((Ns.image_nonempty).mpr hNs_nonempty)
+      have : 0 ≤ M0 := by
+        have hx0_nonneg : ∀ x0 ∈ X, x0 ≥ 0 := by
+          intro x0 hx0
+          simp only[X] at hx0
+          have := by apply (Ns.mem_image (f := (fun n : ℕ ↦ ‖x n‖))).mp hx0
+          obtain ⟨n, ⟨hn_mem, hn⟩⟩ := this
+          have : ‖x n‖ ≥ 0 := by exact norm_nonneg (x ↑n)
+          exact le_of_le_of_eq this hn
+
+        let x0 := X.toList.head!
+        have hx0 : x0 ∈ X := by
+          refine (X.mem_toList).mp ?_
+          refine List.head!_mem_self ?_
+          refine Finset.Nonempty.toList_ne_nil ?_
+          exact Finset.image_nonempty.mpr hNs_nonempty
+
+        have : 0 ≤ x0 := by
+          apply hx0_nonneg
+          exact hx0
+
+        have := X.le_max' x0 hx0
+        exact Preorder.le_trans 0 x0 M0 (hx0_nonneg x0 hx0) this
+
+      have : M0 < M0 + 1 := by linarith
+
+      use M0 + 1
+      intro n hn
+      by_cases hn_lt_zero : n < 0
+      . simp only[hc n, hn_lt_zero]
+        simp only [norm_zero]
+        linarith
+      . have n_nonneg : n ≥ 0 := by exact Int.not_lt.mp hn_lt_zero
+
+        have : ‖x n.toNat‖ ≤ M0 := by
+          simp only[M0]
+          apply X.le_max'
+          refine Ns.mem_image_of_mem (fun n ↦ ‖x ↑n‖) ?_
+          refine Finset.mem_range.mpr ?_
+          refine (Int.toNat_lt_toNat ?_).mpr ?_
+          . exact Int.lt_add_one_iff.mpr hN_gte_zero
+          . refine Int.lt_add_one_iff.mpr ?_
+            exact Int.le_of_lt hn
+
+        simp only[Int.toNat_of_nonneg n_nonneg] at this
+        linarith
+
+  obtain ⟨M, hM⟩ := this
+  have hN_bound : ∀ n ≥ N, ‖x n‖ < 1 + ‖xf‖ := by
+    intro n hn
+
+    calc
+      ‖x n‖ = ‖x n - xf + xf‖ := by ring_nf
+      _ ≤ ‖x n - xf‖ + ‖xf‖ := by exact norm_add_le (x n - xf) xf
+      _ < 1 + ‖xf‖ := by rel[hN n hn]
+
+  use max (M) (1 + ‖xf‖)
+  intro k
+
+  by_cases hk : k < N
+  . refine lt_max_of_lt_left (a := ‖x k‖) (b := M) (c := 1 + ‖xf‖) ?_
+    exact hM k hk
+  . simp[Int.not_lt] at hk
+    refine lt_max_of_lt_right (a := ‖x k‖) (b := M) (c := 1 + ‖xf‖) ?_
+    exact hN_bound k hk
+
+
+def HasFinalValue (x : DiscreteSignal) (xf : ℂ) := Tendsto x atTop (𝓝 xf)
+
+theorem hasFinalValue_implies_isStable (x : DiscreteSignal) (xf : ℂ) :
+    HasFinalValue x xf → IsStable x := by
+      intro h
+      use xf
+      exact h
+

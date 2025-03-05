@@ -1,7 +1,6 @@
 import Lean
 import Lean.Elab.Tactic
 import Mathlib.Tactic
-import Mathlib.Topology.Algebra.InfiniteSum.Defs
 
 open Lean Elab Tactic
 
@@ -230,9 +229,9 @@ example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   convert HasSum.add (f := fun n => f1 n + f2 n + f3 n) (g := f4) (b := ?S4) ?_ ?hS4
   refine HasSum.add (f := fun n => f1 n + f2 n) (g := f3) (a := ?_) (b := ?S3) ?_ ?hS3
   refine HasSum.add (f := f1) (g := f2) (a := ?S1) (b := ?S2) ?hS1 ?hS2
-  all_goals clear
+  all_goals clear * -
 
-  all_goals try assumption
+  --all_goals try assumption
 
 example : HasSum (fun (n : ℕ) => 2 * (1/2 : ℝ)^n + 2 * (1/3 : ℝ)^n) (7 : ℝ) := by
   sum_simp
