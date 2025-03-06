@@ -348,47 +348,46 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
   refine' hasSum_geometric_of_norm_lt_one _
   rw[norm_inv, inv_lt_comm₀] <;> linarith
 
--- theorem zt_FinalValueTheorem
---   (x : DiscreteSignal) (xf : ℂ) :
---   IsCausal x → HasFinalValue x xf →
---   Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
---     intro hx_causal
---     intro hxf
---     simp only[ZTransform]
---     sorry
+theorem zt_FinalValueTheorem
+  (x : DiscreteSignal) (xf : ℂ) :
+  IsCausal x → HasFinalValue x xf →
+  Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
+    intro hx_causal
+    intro hxf
+    simp only[ZTransform]
+    sorry
 
-@[simp]
-theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
-  simp only[ZTransform]
-  calc
-  ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
-    by group
+-- @[simp]
+-- theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
+--   simp only[ZTransform]
+--   calc
+--   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) := by group
 
-  _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
-    rw[tsum_add]
+--   _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
+--     rw[tsum_add]
 
-  _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
-  _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
+--   _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
+--   _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
 
-@[simp]
-theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
-  simp only[ZTransform]
+-- @[simp]
+-- theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
+--   simp only[ZTransform]
 
-  let g := fun k : ℤ => f (k - n) * z ^ (-k)
-  let h := fun m : ℤ => f m * z ^ (-(m + n))
+--   let g := fun k : ℤ => f (k - n) * z ^ (-k)
+--   let h := fun m : ℤ => f m * z ^ (-(m + n))
 
-  have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
-    ext m
-    -- ring_nf
-  sorry
+--   have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
+--     ext m
+--     -- ring_nf
+--   sorry
 
-@[simp]
-theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
-  sorry
+-- @[simp]
+-- theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
+--   sorry
 
-@[simp]
-theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
-  sorry
+-- @[simp]
+-- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
+--   sorry
 
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
  (∀ (z : ROC), HasZTransform f F z) →
@@ -418,18 +417,15 @@ theorem ℤt_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z�
 
   --case 1
   . exact fun k ↦ ‖m‖ * ‖z^(-k: ℤ)‖
-  . refine Summable.mul_left (f := fun k ↦ ‖z^(-k)‖) ‖m‖ ?_
-
-
-
+  . refine Summable.mul_left (f := fun k:ℕ  ↦ ‖z^(-k)‖) ‖m‖ ?_
   . sorry
-sorry
 
 
--- @[simp]
-theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
-  rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
-  simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
-  let h := fun k => ∑' m : ℤ, f m * g (k - m)
-  let t := fun k => h k * z ^ (-k)
-  sorry
+
+-- -- @[simp]
+-- theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
+--   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
+--   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
+--   let h := fun k => ∑' m : ℤ, f m * g (k - m)
+--   let t := fun k => h k * z ^ (-k)
+--   sorry
