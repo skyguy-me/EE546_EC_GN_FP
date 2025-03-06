@@ -2,6 +2,7 @@ import Mathlib.Analysis.Complex.Basic
 import Mathlib.Analysis.SpecificLimits.Normed
 import Mathlib.Data.Complex.Exponential
 import Mathlib.Data.Set.Basic
+import Mathlib.Data.Real.Basic
 import Mathlib.Algebra.Group.Indicator
 import Mathlib.Topology.Algebra.InfiniteSum.Defs
 import Mathlib.Topology.Basic
@@ -316,29 +317,26 @@ theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ
   simp only[mul_comm] -- asSum (fun k ↦ (a * z) ^ (-k) * f k) (F (z * a))
   exact h ⟨z * a, hza⟩
 
+theorem ℤt_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z‖ > 1) : IsStable x → IsCausal x → ZTransformable x z := by
+  intro hs hc
+  have hb : IsBoundedSignal x := by apply isStableAndCausal_implies_isBounded x hs hc
+  rw [ZTransformable]
+  obtain ⟨m, hm⟩ := hb
+  refine Summable.of_norm_bounded ?_ ?_ ?_  --⊢ Summable fun a ↦ ‖x a * z ^ (-a)‖
+  --case 1
+  . exact fun k ↦ ‖m‖ * ‖z^(-k)‖
+  . refine Summable.mul_left (f := fun k ↦ ‖z^(-k)‖) ‖m‖ ?_
 
 
-  -- unfold HasZTransform
 
 
-  -- calc a^(-k) * f k * z^(-k)
-  --    = f k * (a^(-k) * z^(-k))  : by rw [mul_comm (a^(-k)) (f k)]
-  --  _ = f k * (a * z)^(-k)     : by rw [mul_assoc, ← mul_zpow, mul_comm a z]
+
+  .
 
 
-  -- rfl
-
-  -- simp only [ZTransform]
-
-  -- have h : ∀ k, a^(-k) * f k * z^(-k) = f k * (a * z)^(-k) := by
-  --   intro k -- a ^ (-k) * f k * z ^ (-k) = f k * (a * z) ^ (-k)
-  --   calc a^(-k) * f k * z^(-k)
-  --     _ = f k * a^(-k) * z^(-k) := by ring
-  --     _ = f k * (a * z)^(-k) := by sorry
 
 
-  -- rw [tsum_congr h]
-
+sorry
 
 
 -- @[simp]
