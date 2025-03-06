@@ -407,19 +407,29 @@ theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ
   simp only[mul_comm] -- asSum (fun k ↦ (a * z) ^ (-k) * f k) (F (z * a))
   exact h ⟨z * a, hza⟩
 
-theorem ℤt_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z‖ > 1) : IsStable x → IsCausal x → ZTransformable x z := by
+theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z‖ > 1) : IsStable x → IsCausal x → ZTransformable x z := by
   intro hs hc
   have hb : IsBoundedSignal x := by apply isStableAndCausal_implies_isBounded x hs hc
   rw [ZTransformable]
   obtain ⟨m, hm⟩ := hb
   apply (zt_summable_causal hc).mpr
   refine Summable.of_norm_bounded ?_ ?_ ?_  --⊢ Summable fun a ↦ ‖x a * z ^ (-a)‖
+  . exact fun k ↦ ‖m‖ * ‖z^(-k : ℤ)‖
 
-  --case 1
-  . exact fun k ↦ ‖m‖ * ‖z^(-k: ℤ)‖
-  . refine Summable.mul_left (f := fun k:ℕ  ↦ ‖z^(-k)‖) ‖m‖ ?_
-  . sorry
+  . refine Summable.mul_left (f := fun n : ℕ ↦ ‖z^(-n : ℤ)‖) ‖m‖ ?_
+    simp only[zpow_neg, ←inv_zpow]
+    simp only[zpow_natCast]
+    refine summable_norm_geometric_of_norm_lt_one ?_
+    rw[norm_inv, inv_lt_comm₀] <;> linarith
 
+  . intro n
+    calc
+    ‖x ↑n * z ^ (-n : ℤ)‖
+      = ‖x ↑n‖ * ‖ z ^ (-n : ℤ)‖ := by rw[norm_mul]
+     _ ≤ m * ‖z ^ (-n : ℤ)‖ := by rel [hm n]
+      _ ≤ ‖m‖ * ‖z ^ (-n : ℤ)‖ := by
+        have : m ≤ ‖m‖ := by exact Real.le_norm_self m
+        rel[this]
 
 
 -- -- @[simp]
