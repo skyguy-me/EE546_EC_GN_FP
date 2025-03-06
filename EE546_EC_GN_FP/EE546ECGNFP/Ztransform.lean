@@ -177,7 +177,7 @@ def unit_step (k : ℤ) : ℂ :=
 
 
 /-
-we now expand the defiriniton of all unit step function to include non-negative, positive (these have to be shown to be equivalent) and negtive indices:
+we now expand the defiriniton of all unit step function to include non-negative, positive (these have to be shown to be equivalent) and negtive indices. We do this to force coercion for lean 4
 -/
 
 @[simp]
@@ -211,6 +211,15 @@ theorem unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicat
 
 alias u := unit_step
 alias H := unit_step
+
+
+/-In this sub-section, we provide a detailed explanation of several key theorems related to the unit step function `unit_step` (aliased as `u`). These theorems establish fundamental properties such as causality and summability, and they show how multiplication by the unit step function affects discrete-time signals. Specifically, we establish that multiplying a signal by \( u(k) \) enforces causality and preserves summability.
+
+We formalize these properties in Lean so that the **causal nature of our signals has specific implications in the Z-transform**. By encoding these results, we ensure that Lean can automatically reason about causality in **Z-transform proofs**, particularly when proving properties like the **region of convergence (ROC)** and **linearity of summation**.
+
+These causal properties allow us to **exploit simplifications** in proofs, ensuring that when working with the Z-transform of causal signals, we can restrict summation to the non-negative domain, rather than dealing with the entire integer set $ \mathbb{Z} $.
+
+-/
 
 theorem unit_step_causal : IsCausal unit_step := by simp[IsCausal]
 
