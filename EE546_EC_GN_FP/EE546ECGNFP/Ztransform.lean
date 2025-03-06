@@ -165,12 +165,20 @@ theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k 
 
 /-
 **2. Unit Step Function (`δ(k)`)**
-The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
+The **unit step function**, which reperent causality in discrete time signals is defined as:
 -/
 
 @[simp]
 def unit_step (k : ℤ) : ℂ :=
   if k ≥ 0 then 1 else 0
+
+
+
+
+
+/-
+we now expand the defiriniton of all unit step function to include non-negative, positive (these have to be shown to be equivalent) and negtive indices:
+-/
 
 @[simp]
 theorem unit_step_of_nat : ∀ (n : ℕ), unit_step n = 1 := by
@@ -225,26 +233,6 @@ theorem causal_of_unit_step_mul (x : DiscreteSignal) :
     IsCausal (fun k : ℤ ↦ u k * x k) := by
       simp only[mul_comm]
       exact causal_of_mul_unit_step x
-
-/--
-The rect function is one on [a, b)
--/
-@[simp]
-def rect (a b : ℤ) (k : ℤ) :=
-  unit_step (k - a) - unit_step (k - b)
-
-theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Complex.exp (j * ω))) = 𝓕_d x := by
-  intro x
-  ext ω
-  simp
-  apply tsum_congr
-  intro k
-  calc
-    x k * (Complex.exp (j * ↑ω) ^ k)⁻¹
-      = x k * (Complex.exp (j * ↑ω * ↑k))⁻¹ := by rw [← Complex.exp_int_mul (j * ↑ω) k]; ring_nf
-    _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
-
-
 
 
 theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
@@ -375,6 +363,25 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
   refine' hasSum_geometric_of_norm_lt_one _
   rw[norm_inv, inv_lt_comm₀] <;> linarith
 
+/--
+The rect function is one on [a, b)
+-/
+@[simp]
+def rect (a b : ℤ) (k : ℤ) :=
+  unit_step (k - a) - unit_step (k - b)
+
+
+
+theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Complex.exp (j * ω))) = 𝓕_d x := by
+  intro x
+  ext ω
+  simp
+  apply tsum_congr
+  intro k
+  calc
+    x k * (Complex.exp (j * ↑ω) ^ k)⁻¹
+      = x k * (Complex.exp (j * ↑ω * ↑k))⁻¹ := by rw [← Complex.exp_int_mul (j * ↑ω) k]; ring_nf
+    _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
 /-
