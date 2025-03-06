@@ -12,6 +12,28 @@ namespace Controls
 @[simp] def NegInt : Set ℤ := { k | k < 0 }
 @[simp] def NonPosInt : Set ℤ := { k | k ≤ 0 }
 
+@[simp]
+theorem PosIntComp : PosIntᶜ = NonPosInt := by
+  ext k
+  simp only [Set.mem_compl_iff, Set.mem_setOf_eq]
+  exact Int.not_lt
+
+
+@[simp]
+theorem NonPosIntComp : NonPosIntᶜ = PosInt := by
+  rw [←PosIntComp, compl_compl]
+
+@[simp]
+theorem NegIntComp : NegIntᶜ = NonNegInt := by
+  ext k
+  simp only [Set.mem_compl_iff, Set.mem_setOf_eq]
+  exact Int.not_lt
+
+
+@[simp]
+theorem NonNegIntComp : NonNegIntᶜ = NegInt := by
+  rw [←NegIntComp, compl_compl]
+
 /--
 The union of non-positive integers and positive integers is ℤ.
 -/
@@ -151,3 +173,7 @@ def univ_equiv (α : Type*) : α ≃ @Set.univ α where
 theorem hasSum_univ {α β : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
   {f : β → α} : HasSum (fun x : @Set.univ β ↦ f x) a ↔ HasSum f a := by
     exact (Equiv.hasSum_iff (α := α) (f := f) (a := a) (univ_equiv β).symm)
+
+theorem summable_univ {α β : Type*} [AddCommMonoid α] [TopologicalSpace α]
+  {f : β → α} : Summable (fun x : @Set.univ β ↦ f x) ↔ Summable f := by
+    exact (Equiv.summable_iff (α := α) (f := f) (univ_equiv β).symm)

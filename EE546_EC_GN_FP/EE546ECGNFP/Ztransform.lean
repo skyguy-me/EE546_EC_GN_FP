@@ -85,7 +85,7 @@ noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) :=
   ∑' k : ℤ, x (k) * z^(-k : ℤ)
 
 
-def HasZTransform (x : DiscreteSignal) (z : ℂ) := HasSum (fun (k : ℤ) ↦ x k * z ^ (-k : ℤ))
+def HasZTransform (f : DiscreteSignal) (F : ℂ → ℂ) (z : ℂ) := HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) (F z)
 
 def ZTransformable (f : DiscreteSignal) (z : ℂ) := Summable fun k ↦ f k * z ^ (-k)
 
@@ -206,7 +206,7 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
-theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) z (z ^ (-k₀)) := by
+theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
   rw[HasZTransform]
   simp
 
@@ -227,6 +227,13 @@ theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
     exact Equiv.hasSum_iff nonNegInt_nat_equiv.symm (a := a) (
       f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
 
+theorem ZTUnilateral_summable_equiv{z : ℂ} (x : DiscreteSignal) :
+  Summable (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) ↔
+  Summable (fun k : NonNegInt ↦ x k * z ^ (-k : ℤ)) := by
+    exact Equiv.summable_iff nonNegInt_nat_equiv.symm (
+      f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
+
+
 theorem ZTUnilateral_tsum_equiv {z : ℂ} (x : DiscreteSignal) :
   (ZTransformUnilateral x) z = (ZTransformUnilateral' x) z := by
     exact Equiv.tsum_eq nonNegInt_nat_equiv.symm (
@@ -237,6 +244,48 @@ theorem indicator_one_mul {α β : Type*} [Semiring β] {A : Set α} (a : α) (f
     A.indicator 1 a * f a = A.indicator (fun a' ↦ f a') a := by
       by_cases ha : a ∈ A
       <;> simp[ha]
+
+theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
+    (hf : IsCausal f) →
+    Summable (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) ↔
+    Summable (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) := by
+      intro hf
+      apply Iff.intro
+      . intro hmp
+        have h_ind : (fun k : ℤ ↦ f k * z^(-k : ℤ)) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * z^(-k : ℤ)) k) := by
+          ext k
+          by_cases hk : k < 0
+
+          . have : k ∉ NonNegInt := by exact Int.not_le.mpr hk
+            simp only[Set.indicator_of_not_mem this, hf k hk, zero_mul]
+
+          . simp[Int.not_lt] at hk
+            change k ∈ NonNegInt at hk
+            simp only[Set.indicator_of_mem hk]
+
+        rw[h_ind] at hmp
+        simp only[ZTUnilateral_summable_equiv]
+        exact (summable_subtype_iff_indicator).mpr hmp
+
+      . intro hmpr
+        simp only[←summable_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))]
+        convert Summable.add_compl (s := NegInt) (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ)) ?_ ?_
+
+        . exact summable_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))
+
+        . change Summable (fun k : NegInt ↦ f k * z ^ (-k : ℤ))
+          convert summable_zero with k
+          convert zero_mul (z ^ (-k : ℤ))
+          obtain ⟨k, hk⟩ := k
+          change k < 0 at hk
+          change f k = 0
+          exact hf k hk
+
+        . change Summable (fun k : ↑NegIntᶜ ↦ f k * z ^ (-k : ℤ))
+          rw[NegIntComp]
+          simp only[←ZTUnilateral_summable_equiv]
+          exact hmpr
+
 
 
 theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
@@ -287,7 +336,7 @@ theorem zt_sum_unit_step {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
       convert zt_sum_causal (causal_of_unit_step_mul f) with n
       simp[u]
 
-theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u z (1 / (1 - z⁻¹)) := by
+theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z ↦ (1 / (1 - z⁻¹))) z := by
   rw[HasZTransform]
 
   have : ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) := by simp
@@ -343,7 +392,7 @@ theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : �
   sorry
 
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
- (∀ (z : ROC), (HasZTransform f z (F z))) →
+ (∀ (z : ROC), HasZTransform f F z) →
  (∀ z a : ℂ, z * a ∈ ROC → (HasZTransform (λ k ↦ a^ (-k) * f k) z (F (z * a)))) := by
   unfold HasZTransform -- HasSum (fun k ↦ f k * ↑z ^ (-k)) (F ↑z)) →  ∀ (z a : ℂ), z * a ∈ ROC → HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
   intro h --  ∀ (z : ↑ROC), HasSum (fun k ↦ f k * ↑z ^ (-k)) (F ↑z)
