@@ -14,10 +14,8 @@ Winter 2025<br />
 -/
 
 /-
-The Z-transform is a key tool in the analysis and design of discrete-time control systems, yet formally verified solutions remain limited. To address this gap, we systematically encoded a standard Z-transform table into Lean and developed a robust library that allows control engineers to simplify Z-transform expressions using `simp_only[]`. Contrary to initial expectations, this effort proved more intricate than anticipated, owing to subtleties in representing and manipulating mathematical objects within a proof assistant. In this report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. We have successfully enclosed a set of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, the endeavor remains ongoing. Future work will expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust, formally verified Z-transform framework for control engineering applications.
+The Z-transform is a key tool in the analysis of discrete-time control systems, yet formally verified solutions in lean 4 and matlib remain limited. To address this gap, we systematically attmempt to encode a standard Z-transform table into Lean and developed a robust library that allows control engineers to simplify Z-transform expressions using `simp_only[]`. Contrary to initial expectations, this effort proved more intricate than anticipated, owing to subtleties in representing and manipulating mathematical objects within a proof assistant. In this report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. We have successfully enclosed a set of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, the endeavor remains ongoing. Future work will expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust, formally verified Z-transform framework for control engineering applications.
 -/
-
-
 
 import Mathlib.Analysis.Complex.Basic
 import Mathlib.Analysis.SpecificLimits.Normed
@@ -73,6 +71,7 @@ open Filter Topology Controls Controls.Discrete
 
 set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
+
 
 
 
