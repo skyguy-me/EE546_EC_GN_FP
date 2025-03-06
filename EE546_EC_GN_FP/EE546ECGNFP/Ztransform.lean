@@ -229,6 +229,9 @@ theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
     HasSum (fun (n : ℕ) ↦ f n) S := by
       simp only[u, unit_step_of_nat, one_mul]
 
+/-This allows us to rewrite sums over ℤ in terms of sums over non-negative integers only, a key step when handling Z-transform proofs for causal signals.-/
+
+
 
 theorem causal_of_mul_unit_step (x : DiscreteSignal) :
     IsCausal (fun k : ℤ ↦ x k * u k) := by
@@ -237,11 +240,17 @@ theorem causal_of_mul_unit_step (x : DiscreteSignal) :
       have : ¬(k ≥ 0) := by exact Int.not_le.mpr hk
       simp only[u, unit_step, this, reduceIte, mul_zero]
 
+/-This confirms that causal signals only depend on present and past values, which simplifies Z-transform computations.-/
+
+
 
 theorem causal_of_unit_step_mul (x : DiscreteSignal) :
     IsCausal (fun k : ℤ ↦ u k * x k) := by
       simp only[mul_comm]
       exact causal_of_mul_unit_step x
+
+/-This means we can safely reorder terms in proofs without worrying about violating causality-/
+
 
 
 theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
@@ -250,12 +259,15 @@ theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
     exact Equiv.hasSum_iff nonNegInt_nat_equiv.symm (a := a) (
       f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
 
+/- This theorem ensures that we can switch between summing over ℕ and summing over NonNegInt, a more structured subset of  ℤ. This transition is useful for formalizing summation equivalences in Lean-/
+
 theorem ZTUnilateral_summable_equiv{z : ℂ} (x : DiscreteSignal) :
   Summable (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) ↔
   Summable (fun k : NonNegInt ↦ x k * z ^ (-k : ℤ)) := by
     exact Equiv.summable_iff nonNegInt_nat_equiv.symm (
       f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
 
+/-This theorem ensures that summability properties hold when switching between standard natural number summations and structured integer sets-/
 
 theorem ZTUnilateral_tsum_equiv {z : ℂ} (x : DiscreteSignal) :
   (ZTransformUnilateral x) z = (ZTransformUnilateral' x) z := by
@@ -309,6 +321,7 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
           simp only[←ZTUnilateral_summable_equiv]
           exact hmpr
 
+/-This theorem shows that if a signal is causal, we can restrict summation to non-negative indices. It justifies the transition from bilateral to unilateral Z-transforms.-/
 
 
 theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
@@ -352,12 +365,17 @@ theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
           simp only[←ZTUnilateral_hasSum_equiv]
           exact hmpr
 
+
+
 theorem zt_sum_unit_step {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
     HasSum (fun (k : ℤ) ↦ u k * f k * z ^ (-k : ℤ)) S ↔
     HasSum (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) S := by
 
       convert zt_sum_causal (causal_of_unit_step_mul f) with n
       simp[u]
+
+
+/-The preceding sub-theorems systematically reduce summation complexity and enforce causality in formal Z-transform proofs. They ensure that we only consider non-negative indices, enabling a rigorous transition from bilateral to unilateral Z-transforms. With all that done, we can finaly prove the unit step Z-transformation -/
 
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z ↦ (1 / (1 - z⁻¹))) z := by
   rw[HasZTransform]
@@ -373,8 +391,9 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
   rw[norm_inv, inv_lt_comm₀] <;> linarith
 
 /--
-The rect function is one on [a, b)
+The rect function,from (a,b]), is defined as:
 -/
+
 @[simp]
 def rect (a b : ℤ) (k : ℤ) :=
   unit_step (k - a) - unit_step (k - b)
