@@ -112,35 +112,56 @@ notation "𝓕_d" => DiscreteTimeFourierTransform
 
 variable (x : DiscreteSignal)
 ```
+**Fundamental Discrete-Time Signals and Their Z-Transforms**
+In this section, we define and analyze two fundamental discrete-time signals: the **unit impulse** (`δ(k)`) and the **unit step** (`u(k)`). These signals play a crucial role in system analysis, forming the basis for deriving the Z-transform of more complex signals. We also provide key theorems related to their properties, including causality and summability, and prove their corresponding Z-transforms. THis is the first fundamental contribution we make towards the problem of encoding digital control systems in lean 4.
 
-# Properties of the Z-Transform
 
-| No. | Name                          | Formula                                                                                                                                  |
-|----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
-| 1   | **Linearity**                 | $ \mathcal{Z}\{a\,f_1(k) + b\,f_2(k)\} \;=\; a\,F_1(z)\;+\;b\,F_2(z)$                                                      |
-| 2   | **Time Delay**                | $ \mathcal{Z}\{f(k - n)\} \;=\; z^{-n}\,F(z)$                                                                             |
-| 3   | **Time Advance**              | $ \mathcal{Z}\{f(k + 1)\} \;=\; z\,F(z)\;-\;z\,f(0)$<br>$ \mathcal{Z}\{f(k + n)\} \;=\; z^n\,F(z)\;-\;z^{n-1}f(0)\;-\;\dots\;-\;z\,f(n-1)$ |
-| 4   | **Discrete-Time Convolution** | $ \mathcal{Z}\{f_1(k)\ast f_2(k)\} \;=\; F_1(z)\,F_2(z)$                                                                   |
-| 5   | **Multiplication by Exponential** | $ \mathcal{Z}\{a^k\,f(k)\} \;=\; F(a\,z)$                                                                               |
-| 6   | **Complex Differentiation**   | $ \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)$                                                   |
-| 7   | **Final Value Theorem**       | $ f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)$                                       |
-| 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |
-
+**1. Unit Impulse Function (`δ(k)`)**
+The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
 
 ```hs
 @[simp]
 def unit_impulse (k : ℤ) : ℂ :=
   if k = 0 then 1 else 0
-
+```
+This function acts as an identity under convolution and is fundamental for analyzing system responses. The impulse function can be equivalently expressed using a set indicator function:
+```hs
 theorem unit_impulse_equiv_indicator :
     ∀ k : ℤ, unit_impulse k = Set.indicator {0} 1 k := by
   intro k
   by_cases k_zero : k = 0
   <;> simp[k_zero]
 
-
 notation "δ" => unit_impulse
+```
+We now attempt to prove one of the fundamental Z-transform relationships:
 
+The Z-transform of a shifted unit impulse function \( \delta(k - k_0) \) is given by:
+$
+\mathcal{Z} \{ \delta(k - k_0) \} = z^{-k_0}
+$
+
+```hs
+theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
+  rw[HasZTransform]
+  simp
+
+  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
+  simp only[this]
+
+  have : ∀ k : ℤ, ∀ z : ℂ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
+    intro k _
+    by_cases hk : k = k₀
+    <;> simp[hk]
+
+  simp [this]
+  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
+```
+
+**2. Unit Step Function (`δ(k)`)**
+The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
+
+```hs
 @[simp]
 def unit_step (k : ℤ) : ℂ :=
   if k ≥ 0 then 1 else 0
@@ -219,20 +240,7 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
-theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
-  rw[HasZTransform]
-  simp
 
-  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
-  simp only[this]
-
-  have : ∀ k : ℤ, ∀ z : ℂ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
-    intro k _
-    by_cases hk : k = k₀
-    <;> simp[hk]
-
-  simp [this]
-  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
 theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
   HasSum (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) a ↔
@@ -361,18 +369,28 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
 
   refine' hasSum_geometric_of_norm_lt_one _
   rw[norm_inv, inv_lt_comm₀] <;> linarith
+```
 
-theorem zt_FinalValueTheorem
-  (x : DiscreteSignal) (xf : ℂ) :
-  IsCausal x → HasFinalValue x xf →
-  Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
-    intro hx_causal
-    intro hxf
-    simp only[ZTransform]
-    sorry
+# Properties of the Z-Transform
 
--- @[simp]
--- theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
+| No. | Name                          | Formula                                                                                                                                  |
+|----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
+| 1   | **Linearity**                 | $ \mathcal{Z}\{a\,f_1(k) + b\,f_2(k)\} \;=\; a\,F_1(z)\;+\;b\,F_2(z)$                                                      |
+| 2   | **Time Delay**                | $ \mathcal{Z}\{f(k - n)\} \;=\; z^{-n}\,F(z)$                                                                             |
+| 3   | **Time Advance**              | $ \mathcal{Z}\{f(k + 1)\} \;=\; z\,F(z)\;-\;z\,f(0)$<br>$ \mathcal{Z}\{f(k + n)\} \;=\; z^n\,F(z)\;-\;z^{n-1}f(0)\;-\;\dots\;-\;z\,f(n-1)$ |
+| 4   | **Discrete-Time Convolution** | $ \mathcal{Z}\{f_1(k)\ast f_2(k)\} \;=\; F_1(z)\,F_2(z)$                                                                   |
+| 5   | **Multiplication by Exponential** | $ \mathcal{Z}\{a^k\,f(k)\} \;=\; F(a\,z)$                                                                               |
+| 6   | **Complex Differentiation**   | $ \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)$                                                   |
+| 7   | **Final Value Theorem**       | $ f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)$                                       |
+| 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |
+
+
+```hs
+theorem ZTransform_linear (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
+  HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
+  unfold HasZTransform
+  sorry
+
 --   simp only[ZTransform]
 --   calc
 --   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) := by group
@@ -401,6 +419,14 @@ theorem zt_FinalValueTheorem
 
 -- @[simp]
 -- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
+--   sorry
+
+-- -- @[simp]
+-- theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
+--   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
+--   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
+--   let h := fun k => ∑' m : ℤ, f m * g (k - m)
+--   let t := fun k => h k * z ^ (-k)
 --   sorry
 
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
@@ -446,11 +472,24 @@ theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc
         rel[this]
 
 
--- -- @[simp]
--- theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
---   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   let h := fun k => ∑' m : ℤ, f m * g (k - m)
---   let t := fun k => h k * z ^ (-k)
---   sorry
+
+
+theorem zt_FinalValueTheorem
+  (x : DiscreteSignal) (xf : ℂ) :
+  IsCausal x → HasFinalValue x xf →
+  Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
+    intro hx_causal
+    intro hxf
+    simp only[ZTransform]
+    sorry
+
+
+-- theorem zt_InitialValueTheorem
+--   (x : DiscreteSignal) (xf : ℂ) :
+--   IsCausal x → HasFinalValue x xf →
+--   Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
+--     intro hx_causal
+--     intro hxf
+--     simp only[ZTransform]
+--     sorry
 ```

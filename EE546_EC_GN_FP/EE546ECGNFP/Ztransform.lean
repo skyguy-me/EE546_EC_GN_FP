@@ -114,14 +114,20 @@ notation "𝓕_d" => DiscreteTimeFourierTransform
 variable (x : DiscreteSignal)
 
 
+/-**Fundamental Discrete-Time Signals and Their Z-Transforms**
+In this section, we define and analyze two fundamental discrete-time signals: the **unit impulse** (`δ(k)`) and the **unit step** (`u(k)`). These signals play a crucial role in system analysis, forming the basis for deriving the Z-transform of more complex signals. We also provide key theorems related to their properties, including causality and summability, and prove their corresponding Z-transforms. THis is the first fundamental contribution we make towards the problem of encoding digital control systems in lean 4.
+-/
 
 
-
-
+/-
+**1. Unit Impulse Function (`δ(k)`)**
+The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
+-/
 
 @[simp]
 def unit_impulse (k : ℤ) : ℂ :=
   if k = 0 then 1 else 0
+/-This function acts as an identity under convolution and is fundamental for analyzing system responses. The impulse function can be equivalently expressed using a set indicator function:-/
 
 theorem unit_impulse_equiv_indicator :
     ∀ k : ℤ, unit_impulse k = Set.indicator {0} 1 k := by
@@ -129,8 +135,38 @@ theorem unit_impulse_equiv_indicator :
   by_cases k_zero : k = 0
   <;> simp[k_zero]
 
-
 notation "δ" => unit_impulse
+
+
+/-We now attempt to prove one of the fundamental Z-transform relationships:
+
+The Z-transform of a shifted unit impulse function \( \delta(k - k_0) \) is given by:
+$
+\mathcal{Z} \{ \delta(k - k_0) \} = z^{-k_0}
+$
+-/
+
+
+theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
+  rw[HasZTransform]
+  simp
+
+  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
+  simp only[this]
+
+  have : ∀ k : ℤ, ∀ z : ℂ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
+    intro k _
+    by_cases hk : k = k₀
+    <;> simp[hk]
+
+  simp [this]
+  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
+
+
+/-
+**2. Unit Step Function (`δ(k)`)**
+The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
+-/
 
 @[simp]
 def unit_step (k : ℤ) : ℂ :=
@@ -209,20 +245,7 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
-theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
-  rw[HasZTransform]
-  simp
 
-  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
-  simp only[this]
-
-  have : ∀ k : ℤ, ∀ z : ℂ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
-    intro k _
-    by_cases hk : k = k₀
-    <;> simp[hk]
-
-  simp [this]
-  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
 theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
   HasSum (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) a ↔
