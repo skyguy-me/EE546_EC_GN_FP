@@ -369,11 +369,12 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
 | 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |
 
 -/
--- @[simp]
-theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (a b : ℂ) (F : ℂ → ℂ) (hz₁ : HasZTransform f₁  (𝓩 f₁) z) (hz₂ : HasZTransform f₂  (𝓩 f₂) z):
-  HasZTransform (fun k => a * f₁ k + b * f₂ k) F (a * 𝓩 f₁ z + b * 𝓩 f₂ z) := by
+
+theorem ZTransform_linear (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
+  HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
   unfold HasZTransform
   sorry
+
 --   simp only[ZTransform]
 --   calc
 --   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) := by group
