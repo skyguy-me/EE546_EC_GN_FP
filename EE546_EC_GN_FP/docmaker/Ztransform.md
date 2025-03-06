@@ -50,7 +50,7 @@ import Mathlib.Tactic.Linarith
 **Key Components**
 
 1. **Signal Properties**
-   - **Causality**: Defines when a signal is zero (or undefined) for times before a given reference, vital for modeling physically realizable systems.
+   - **Causality**: Defines when a signal is zero for times before a given reference, vital for modeling physically realizable systems.
    - **Linearity**: Establishes conditions for superposition and homogeneity in signals, enabling straightforward reasoning about linear systems.
 
 2. **Signal Constructions**
@@ -111,8 +111,23 @@ notation "𝓩_u" => ZTransformUnilateral
 notation "𝓕_d" => DiscreteTimeFourierTransform
 
 variable (x : DiscreteSignal)
+```
+
+# Properties of the Z-Transform
+
+| No. | Name                          | Formula                                                                                                                                  |
+|----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
+| 1   | **Linearity**                 | $ \mathcal{Z}\{a\,f_1(k) + b\,f_2(k)\} \;=\; a\,F_1(z)\;+\;b\,F_2(z)$                                                      |
+| 2   | **Time Delay**                | $ \mathcal{Z}\{f(k - n)\} \;=\; z^{-n}\,F(z)$                                                                             |
+| 3   | **Time Advance**              | $ \mathcal{Z}\{f(k + 1)\} \;=\; z\,F(z)\;-\;z\,f(0)$<br>$ \mathcal{Z}\{f(k + n)\} \;=\; z^n\,F(z)\;-\;z^{n-1}f(0)\;-\;\dots\;-\;z\,f(n-1)$ |
+| 4   | **Discrete-Time Convolution** | $ \mathcal{Z}\{f_1(k)\ast f_2(k)\} \;=\; F_1(z)\,F_2(z)$                                                                   |
+| 5   | **Multiplication by Exponential** | $ \mathcal{Z}\{a^k\,f(k)\} \;=\; F(a\,z)$                                                                               |
+| 6   | **Complex Differentiation**   | $ \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)$                                                   |
+| 7   | **Final Value Theorem**       | $ f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)$                                       |
+| 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |
 
 
+```hs
 @[simp]
 def unit_impulse (k : ℤ) : ℂ :=
   if k = 0 then 1 else 0
