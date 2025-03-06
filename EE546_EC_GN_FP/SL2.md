@@ -1,3 +1,188 @@
+
+
+<center><h1>EE 546 : Automated Reasoning</h1></center>
+<center><h2>Final Project Z-transforms</h2></center>
+
+<center>
+Department of Electrical and Computer Engineering<br />
+Unviersity of Washington<br />
+Ember CHow and Gokul Nathan<br />
+Winter 2025<br />
+</center>
+<br />
+
+
+
+The Z-transform is a key tool in the analysis and design of discrete-time control systems, yet formally verified solutions remain limited. To address this gap, we systematically encoded a standard Z-transform table into Lean and developed a robust library that allows control engineers to simplify Z-transform expressions using `simp_only[]`. Contrary to initial expectations, this effort proved more intricate than anticipated, owing to subtleties in representing and manipulating mathematical objects within a proof assistant. In this report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. We have successfully enclosed a set of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, the endeavor remains ongoing. Future work will expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust, formally verified Z-transform framework for control engineering applications.
+
+```hs
+import Mathlib.Analysis.Complex.Basic
+import Mathlib.Analysis.SpecificLimits.Normed
+import Mathlib.Data.Complex.Exponential
+import Mathlib.Data.Set.Basic
+import Mathlib.Data.Real.Basic
+import Mathlib.Algebra.Group.Indicator
+import Mathlib.Topology.Algebra.InfiniteSum.Defs
+import Mathlib.Topology.Basic
+import Mathlib.Topology.Filter
+import Mathlib.Tactic.Linarith
+```
+ <h2>Our custom Libraries</h2>
+
+`Defs.lean[]` serves as the fundamental definitions file. It provides the basic mathematical structures and operations essential for encoding discrete-time signals, their properties, and the Z-transform in Lean. By collecting these primitives into a single, well-organized file, the project ensures that all higher-level modules rely on a consistent and rigorously defined foundation.
+
+**Key Components**
+
+1. **Discrete-Time Sequences**
+   -Formalizes signals as functions `ℤ → α` (or subsets of `ℤ`), enabling precise manipulation of time-indexed data.
+   - Used for: Forms the bedrock for proving common operations such as shifting, summation, and scaling on discrete-time signals.
+
+2. **Basic Operators and Functions**
+   - Defines pointwise addition and scalar multiplication for signals, laying the groundwork for linear algebraic treatments in the Z-domain.
+   -Used for:Encodes time shifts (left or right), essential for handling transforms of delayed signals.
+
+3. **Notation and Typeclasses**
+   - Introduces the relevant typeclasses (e.g., for real or complex coefficients) to unify signal definitions and operations.
+   - Used for:Simplifies theorem statements and proofs through user-friendly notation, reducing boilerplate and improving readability.
+
+
+`Signal.lean` formalizes signal properties central to control engineering, such as causality and linearity. These properties are crucial for thorough and rigorous Z-transform proofs.
+
+**Key Components**
+
+1. **Signal Properties**
+   - **Causality**: Defines when a signal is zero (or undefined) for times before a given reference, vital for modeling physically realizable systems.
+   - **Linearity**: Establishes conditions for superposition and homogeneity in signals, enabling straightforward reasoning about linear systems.
+
+2. **Signal Constructions**
+   - Provides examples like impulse, step, and ramp signals, along with foundational proofs of their properties.
+   - Demonstrates how signals can be combined (e.g., summed or shifted) while preserving or modifying fundamental attributes.
+
+3. **Theorems and Lemmas**
+   - Supplies initial proofs and templates for reasoning about signal transformations.
+
+
+```hs
+import EE546ECGNFP.Defs -- Useful definitions for implementing engineering Z-transforms
+import EE546ECGNFP.Signal -- USeful examining the signal properties
+
+open Filter Topology Controls Controls.Discrete
+
+set_option maxHeartbeats 10000000
+set_option maxRecDepth 1000
+
+
+@[simp]
+noncomputable def zt_kernel (x : DiscreteSignal) (z : ℂ) : ℤ → ℂ :=
+  fun k ↦ x (k) * z^(-k : ℤ)
+
+@[simp]
+noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) :=
+  ∑' k : ℤ, x (k) * z^(-k : ℤ)
+
+
+def HasZTransform (x : DiscreteSignal) (z : ℂ) := HasSum (fun (k : ℤ) ↦ x k * z ^ (-k : ℤ))
+
+def ZTransformable (f : DiscreteSignal) (z : ℂ) := Summable fun k ↦ f k * z ^ (-k)
+
+@[simp]
+noncomputable def ZTransformUnilateral (x : DiscreteSignal) (z : ℂ) :=
+  ∑' k : ℕ, x (k) * z^(-k : ℤ)
+
+def HasZTransformUnilateral (x : DiscreteSignal) (z : ℂ) := HasSum (fun (n : ℕ) ↦ x n * z ^ (-n : ℤ))
+
+@[simp]
+noncomputable def ZTransformUnilateral' (x : DiscreteSignal) (z : ℂ) :=
+  ∑' k : NonNegInt, x (k) * z ^ (-↑k : ℤ)
+
+@[simp]
+noncomputable def DiscreteTimeFourierTransform (x : DiscreteSignal) (ω : ℝ) :=
+  ∑' k : ℤ, x (k) * Complex.exp (-j * ω * k)
+
+@[simp]
+alias ZT := ZTransform
+
+@[simp]
+alias DTFT := DiscreteTimeFourierTransform
+
+notation "𝓩" => ZTransform
+notation "𝓩_u" => ZTransformUnilateral
+notation "𝓕_d" => DiscreteTimeFourierTransform
+
+variable (x : DiscreteSignal)
+
+
+@[simp]
+def unit_impulse (k : ℤ) : ℂ :=
+  if k = 0 then 1 else 0
+
+theorem unit_impulse_equiv_indicator :
+    ∀ k : ℤ, unit_impulse k = Set.indicator {0} 1 k := by
+  intro k
+  by_cases k_zero : k = 0
+  <;> simp[k_zero]
+
+
+notation "δ" => unit_impulse
+
+@[simp]
+def unit_step (k : ℤ) : ℂ :=
+  if k ≥ 0 then 1 else 0
+
+@[simp]
+theorem unit_step_of_nat : ∀ (n : ℕ), unit_step n = 1 := by
+  intro n
+  simp
+
+@[simp]
+theorem unit_step_of_nonneg : ∀ (k : NonNegInt), unit_step k = 1 := by
+  intro ⟨k, hk⟩
+  simp
+  exact hk
+
+@[simp]
+theorem unit_step_of_pos : ∀ (k : PosInt), unit_step k = 1 := by
+  intro ⟨k, hk⟩
+  simp
+  exact Int.le_of_lt hk
+
+@[simp]
+theorem unit_step_of_neg : ∀ (k : NegInt), unit_step k = 0 := by
+  intro ⟨k, hk⟩
+  simp
+  exact hk
+
+theorem unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicator 1 k := by
+  intro k
+  unfold NonNegInt
+  by_cases k_pos : k ≥ 0
+  <;> simp[k_pos]
+
+alias u := unit_step
+alias H := unit_step
+
+theorem unit_step_causal : IsCausal unit_step := by simp[IsCausal]
+
+@[simp]
+theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
+    HasSum (fun (n : ℕ) ↦ u n * f n) S ↔
+    HasSum (fun (n : ℕ) ↦ f n) S := by
+      simp only[u, unit_step_of_nat, one_mul]
+
+
+theorem causal_of_mul_unit_step (x : DiscreteSignal) :
+    IsCausal (fun k : ℤ ↦ x k * u k) := by
+      intro k hk
+      change k < 0 at hk
+      have : ¬(k ≥ 0) := by exact Int.not_le.mpr hk
+      simp only[u, unit_step, this, reduceIte, mul_zero]
+
+
+theorem causal_of_unit_step_mul (x : DiscreteSignal) :
+    IsCausal (fun k : ℤ ↦ u k * x k) := by
+      simp only[mul_comm]
+      exact causal_of_mul_unit_step x
+```
 -
 The rect function is one on [a, b)
 
@@ -121,53 +306,38 @@ theorem zt_FinalValueTheorem
     simp only[ZTransform]
     sorry
 
--- @[simp]
--- theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
---   simp only[ZTransform]
---   calc
---   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
---     by group
+@[simp]
+theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
+  simp only[ZTransform]
+  calc
+  ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) :=
+    by group
 
---   _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
---     rw[tsum_add]
+  _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
+    rw[tsum_add]
 
---   _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
---   _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
+  _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
+  _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
 
--- @[simp]
--- theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
-  -- simp only[ZTransform]
+@[simp]
+theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
+  simp only[ZTransform]
 
-  -- let g := fun k : ℤ => f (k - n) * z ^ (-k)
-  -- let h := fun m : ℤ => f m * z ^ (-(m + n))
+  let g := fun k : ℤ => f (k - n) * z ^ (-k)
+  let h := fun m : ℤ => f m * z ^ (-(m + n))
 
-  -- have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
-  --   ext m
-  --   -- ring_nf
+  have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
+    ext m
+    -- ring_nf
+  sorry
 
+@[simp]
+theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
+  sorry
 
-
---   sorry
-
--- @[simp]
--- theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
---   sorry
-
--- @[simp]
--- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
---   sorry
-
--- class ZTransformable (f : DiscreteSignal) (z : ℂ) : Prop where
---   summable : Summable (λ k : ℤ, f k * z^(-k))
-
--- instance (f : DiscreteSignal) (z : ℂ) [ZTransformable f z] : HasZTransform f z (ZTransform f z) :=
---   by
---     rw [HasZTransform, ZTransform]
---     exact (ZTransformable.summable f z).hasSum
-
--- theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : @HasZTransform z u (1 / (1 - z⁻¹)) := by sorry
-
-
+@[simp]
+theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
+  sorry
 
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
  (∀ (z : ROC), (HasZTransform f z (F z))) →
@@ -196,33 +366,15 @@ theorem ℤt_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z�
   --case 1
   . exact fun k ↦ ‖m‖ * ‖z^(-k)‖
   . refine Summable.mul_left (f := fun k ↦ ‖z^(-k)‖) ‖m‖ ?_
-
-
-
-
-
-  .
-
-
-
-
+  . sorry
 sorry
 
 
 -- @[simp]
--- theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
---   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
-
-
---   let h := fun k => ∑' m : ℤ, f m * g (k - m)
---   let t := fun k => h k * z ^ (-k)
---   sorry
-
-
--- theorem ZTransform_IVT: := by
---   sorry
-
--- theorem ZTransform_FVT := by
---   sorry
+theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
+  rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
+  simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
+  let h := fun k => ∑' m : ℤ, f m * g (k - m)
+  let t := fun k => h k * z ^ (-k)
+  sorry
 ```
