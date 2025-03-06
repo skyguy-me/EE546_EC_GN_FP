@@ -1,5 +1,4 @@
 /-
-
 <center><h1>EE 546 : Automated Reasoning</h1></center>
 <center><h2>Final Project Z-transforms</h2></center>
 
@@ -52,7 +51,7 @@ import Mathlib.Tactic.Linarith
 **Key Components**
 
 1. **Signal Properties**
-   - **Causality**: Defines when a signal is zero (or undefined) for times before a given reference, vital for modeling physically realizable systems.
+   - **Causality**: Defines when a signal is zero for times before a given reference, vital for modeling physically realizable systems.
    - **Linearity**: Establishes conditions for superposition and homogeneity in signals, enabling straightforward reasoning about linear systems.
 
 2. **Signal Constructions**
