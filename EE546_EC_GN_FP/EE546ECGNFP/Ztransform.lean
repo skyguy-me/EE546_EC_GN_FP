@@ -348,14 +348,14 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
   refine' hasSum_geometric_of_norm_lt_one _
   rw[norm_inv, inv_lt_comm₀] <;> linarith
 
-theorem zt_FinalValueTheorem
-  (x : DiscreteSignal) (xf : ℂ) :
-  IsCausal x → HasFinalValue x xf →
-  Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
-    intro hx_causal
-    intro hxf
-    simp only[ZTransform]
-    sorry
+-- theorem zt_FinalValueTheorem
+--   (x : DiscreteSignal) (xf : ℂ) :
+--   IsCausal x → HasFinalValue x xf →
+--   Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
+--     intro hx_causal
+--     intro hxf
+--     simp only[ZTransform]
+--     sorry
 
 @[simp]
 theorem ZTransform_linear {z : ℂ} (f₁ f₂ : DiscreteSignal) (hf₁ : @ZTransformable z f₁) (hf₂ : @ZTransformable z f₂) (a b : ℂ) : 𝓩 (fun k => a * f₁ k + b * f₂ k) z = a * 𝓩 f₁ z + b * 𝓩 f₂ z := by
@@ -413,10 +413,15 @@ theorem ℤt_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z�
   have hb : IsBoundedSignal x := by apply isStableAndCausal_implies_isBounded x hs hc
   rw [ZTransformable]
   obtain ⟨m, hm⟩ := hb
+  apply (zt_summable_causal hc).mpr
   refine Summable.of_norm_bounded ?_ ?_ ?_  --⊢ Summable fun a ↦ ‖x a * z ^ (-a)‖
+
   --case 1
-  . exact fun k ↦ ‖m‖ * ‖z^(-k)‖
+  . exact fun k ↦ ‖m‖ * ‖z^(-k: ℤ)‖
   . refine Summable.mul_left (f := fun k ↦ ‖z^(-k)‖) ‖m‖ ?_
+
+
+
   . sorry
 sorry
 
