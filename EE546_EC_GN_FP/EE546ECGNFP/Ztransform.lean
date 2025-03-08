@@ -470,9 +470,10 @@ theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ)
 
 
 @[simp]
-theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z : ℂ) (hz₁ : HasZTransform f F z) :  HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z:= by
-  unfold HasZTransform --⊢ HasSum (fun k ↦ (fun k ↦ f (k - n)) k * z ^ (-k)) ((fun z ↦ z ^ (-n) * F z) z)
-  change HasSum ((fun k ↦ f (k - n)) * k * z ^ (-k)) (z ^ (-n) * F z)
+theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z : ℂ) (hz₁ : HasZTransform f F z) :
+  HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z:= by
+  unfold HasZTransform -- (fun k ↦ (fun k ↦ f (k - n)) k * z ^ (-k)) ((fun z ↦ z ^ (-n) * F z) z)
+  change HasSum (fun k ↦ f (k - n) * k * z ^ (-k)) (z ^ (-n) * F z)
 
 
   sorry
