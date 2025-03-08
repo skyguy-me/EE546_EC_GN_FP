@@ -459,24 +459,15 @@ theorem zt_add (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) 
     simp only[this]
     apply HasSum.add  hz₁ hz₂
 
-
-
-
-
-theorem ZTransform_linear (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
+theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
   HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
-  unfold HasZTransform
-  sorry
+  unfold HasZTransform -- (fun k ↦ (fun k ↦ a * f₁ k + b * f₂ k) k * z ^ (-k)) ((fun z ↦ a * F₁ z + b * F₂ z) z)
+  change HasSum (fun k ↦ (a* f₁ k + b* f₂ k) * z ^ (-k)) (a* F₁ z + b* F₂ z)
+  have h₁ := zt_mul_left z f₁ F₁ a hz₁
+  have h₂ := zt_mul_left z f₂ F₂ b hz₂
+  have h₃ := zt_add z (fun k => a * f₁ k) (fun k => b * f₂ k) (fun z => a * F₁ z) (fun z => b * F₂ z) h₁ h₂
+  exact h₃
 
---   simp only[ZTransform]
---   calc
---   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) := by group
-
---   _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
---     rw[tsum_add]
-
---   _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
---   _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
 
 -- @[simp]
 -- theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
