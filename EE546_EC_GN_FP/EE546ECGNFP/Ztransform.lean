@@ -469,17 +469,10 @@ theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ)
   exact h₃
 
 
--- @[simp]
--- theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
---   simp only[ZTransform]
+@[simp]
+theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z : ℂ) (hz₁ : HasZTransform f F z) :  HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z:= by
 
---   let g := fun k : ℤ => f (k - n) * z ^ (-k)
---   let h := fun m : ℤ => f m * z ^ (-(m + n))
-
---   have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
---     ext m
---     -- ring_nf
---   sorry
+  sorry
 
 -- @[simp]
 -- theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
