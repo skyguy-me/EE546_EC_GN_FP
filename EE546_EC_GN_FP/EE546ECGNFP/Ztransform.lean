@@ -476,12 +476,8 @@ theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z
   change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
   have h := hasSum_int_shift (-n) (a := z^(-n) * F z) (f := fun k ↦ f k * z ^ (-(k + n)))
   simp only [add_comm, neg_add, zpow_add, mul_assoc] at h -- HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
-  change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
+  --change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
   exact h.mpr hz₁
-
--- @[simp]
--- theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
---   sorry
 
 -- @[simp]
 -- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
