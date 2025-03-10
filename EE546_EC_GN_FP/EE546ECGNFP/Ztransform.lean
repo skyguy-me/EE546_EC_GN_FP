@@ -26,6 +26,7 @@ import Mathlib.Topology.Algebra.InfiniteSum.Defs
 import Mathlib.Topology.Basic
 import Mathlib.Topology.Filter
 import Mathlib.Tactic.Linarith
+import Mathlib.Data.Complex.Basic
 
 /- <h2>Our custom Libraries</h2>
 
@@ -474,10 +475,26 @@ theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z
   HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z:= by
   unfold HasZTransform -- (fun k ↦ (fun k ↦ f (k - n)) k * z ^ (-k)) ((fun z ↦ z ^ (-n) * F z) z)
   change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
-  have h := hasSum_int_shift (-n) (a := z^(-n) * F z) (f := fun k ↦ f k * z ^ (-(k + n)))
-  simp only [add_comm, neg_add, zpow_add, mul_assoc] at h -- HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
-  --change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
-  exact h.mpr hz₁
+
+  by_cases z_neq_zero : z ≠ 0
+
+  . have h := hasSum_int_shift (n) (a := z^(-n) * F z) (f := fun k ↦ f (k - n) * z ^ (-k))
+    refine h.mp ?_
+    have: (fun k ↦ f (k + n - n) * z ^ (-(k + n))) = (fun k ↦ f (k) * z ^ (-k) * z ^ (-n)) := by
+      ext k
+      calc
+        ( f (k + n - n) * z ^ (-(k + n))) =  f (k) * z ^ (-(k + n)) := by ring_nf
+        _ =  f (k ) * z ^ (-k +  -n) := by ring_nf
+        _ =  f (k) * z ^ (-k) * z ^ (-n) := by rw[zpow_add₀ z_neq_zero, mul_assoc] --
+        -- ℂ is not a Group. It's a group with 0. division might not work if z = 0 so you need to use the add₀ version.
+        --HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
+
+
+
+
+
+
+
 
 -- @[simp]
 -- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
