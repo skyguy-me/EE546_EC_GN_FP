@@ -180,11 +180,24 @@ theorem summable_univ {α β : Type*} [AddCommMonoid α] [TopologicalSpace α]
   {f : β → α} : Summable (fun x : @Set.univ β ↦ f x) ↔ Summable f := by
     exact (Equiv.summable_iff (α := α) (f := f) (univ_equiv β).symm)
 
+--theorem hasSum_bij' {α β γ : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
+  --{f : β → α} {g : β → β} : (Function.Bijective g) →
+  --(HasSum (fun (x : g '' @Set.univ β) ↦ f x) a ↔ HasSum f a) := by
+    --intro hg
+    --have : @Set.univ β ≃ g '' @Set.univ β := by
+      --refine (Equiv.ofBijective (fun x : @Set.univ β ↦ (⟨g x, ?_⟩ : (g '' @Set.univ β)))  ?_).symm
+
+
 theorem hasSum_bij {α β γ : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
   {f : β → α} {i : γ → β} : (Function.Bijective i) →
   (HasSum (f ∘ i) a ↔ HasSum f a) := by
     intro hi
     exact Equiv.hasSum_iff (a := a) (f := f) (by exact Equiv.ofBijective i hi)
+
+theorem hasSum_int_shift_neg {α : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
+  {f : ℤ → α} (k₀ : ℤ) : HasSum (fun k ↦ f (k - k₀)) a ↔ HasSum f a := by
+    apply hasSum_bij
+    exact AddGroup.addRight_bijective (-k₀)
 
 theorem hasSum_int_shift {α : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
   {f : ℤ → α} (k₀ : ℤ) : HasSum (fun k ↦ f (k + k₀)) a ↔ HasSum f a := by

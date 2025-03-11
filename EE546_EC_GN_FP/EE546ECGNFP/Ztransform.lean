@@ -91,8 +91,10 @@ noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) :=
   ∑' k : ℤ, x (k) * z^(-k : ℤ)
 
 
+@[simp]
 def HasZTransform (f : DiscreteSignal) (F : ℂ → ℂ) (z : ℂ) := HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) (F z)
 
+@[simp]
 def ZTransformable (f : DiscreteSignal) (z : ℂ) := Summable fun k ↦ f k * z ^ (-k)
 
 @[simp]
@@ -156,20 +158,8 @@ $
 
 
 theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
-  rw[HasZTransform]
-  simp
-
-  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
-  simp only[this]
-
-  have : ∀ k : ℤ, ∀ z : ℂ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
-    intro k _
-    by_cases hk : k = k₀
-    <;> simp[hk]
-
-  simp [this]
-  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
-
+  simp[Int.sub_eq_zero]
+  convert hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
 /-
 **2. Unit Step Function (`δ(k)`)**
@@ -295,6 +285,7 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
       intro hf
       apply Iff.intro
       . intro hmp
+        simp only[ZTUnilateral_summable_equiv]
         have h_ind : (fun k : ℤ ↦ f k * z^(-k : ℤ)) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * z^(-k : ℤ)) k) := by
           ext k
           by_cases hk : k < 0
@@ -307,7 +298,6 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
             simp only[Set.indicator_of_mem hk]
 
         rw[h_ind] at hmp
-        simp only[ZTUnilateral_summable_equiv]
         exact (summable_subtype_iff_indicator).mpr hmp
 
       . intro hmpr
@@ -467,62 +457,42 @@ theorem zt_add (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) 
 
 theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
   HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
-  unfold HasZTransform -- (fun k ↦ (fun k ↦ a * f₁ k + b * f₂ k) k * z ^ (-k)) ((fun z ↦ a * F₁ z + b * F₂ z) z)
-  change HasSum (fun k ↦ (a* f₁ k + b* f₂ k) * z ^ (-k)) (a* F₁ z + b* F₂ z)
-  have h₁ := zt_mul_left z f₁ F₁ a hz₁
-  have h₂ := zt_mul_left z f₂ F₂ b hz₂
-  have h₃ := zt_add z (fun k => a * f₁ k) (fun k => b * f₂ k) (fun z => a * F₁ z) (fun z => b * F₂ z) h₁ h₂
-  exact h₃
-
+  convert zt_add z (fun k => a * f₁ k) (fun k => b * f₂ k) ?_ ?_ ?add_left ?add_right
+  <;> apply zt_mul_left
+  <;> assumption
 
 @[simp]
-theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z : ℂ) (z_neq_zero : z ≠ 0) (hz₁ : HasZTransform f F z) :
-  HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z:= by
-  unfold HasZTransform -- (fun k ↦ (fun k ↦ f (k - n)) k * z ^ (-k)) ((fun z ↦ z ^ (-n) * F z) z)
-  change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
+theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ)   :
+  HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z := by
+    unfold HasZTransform
+    change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
+    refine' (hasSum_int_shift n).mp _
+    convert hz.mul_left (z^(-n)) using 2 with k
+    calc
+      f (k + n - n) * z ^ (-(k + n)) = f (k) * z ^ (-(k + n)) := by
+        rw[add_sub_cancel_right]
 
-  refine (hasSum_int_shift (n)).mp ?_
-  have: (fun k ↦ f (k + n - n) * z ^ (-(k + n))) = (fun k ↦ f (k) * z ^ (-k) * z ^ (-n)) := by
-      ext k
-      calc
-        ( f (k + n - n) * z ^ (-(k + n))) =  f (k) * z ^ (-(k + n)) := by ring_nf
-        _ =  f (k ) * z ^ (-k +  -n) := by ring_nf
-        _ =  f (k) * z ^ (-k) * z ^ (-n) := by rw[zpow_add₀ z_neq_zero, mul_assoc] --
-        -- ℂ is not a Group. It's a group with 0. division might not work if z = 0 so you need to use the add₀ version.
-  rw [this]
-  convert hz₁.mul_right (z^(-n)) using 1 -- convert is applied whenever apply doesn't exactly equal.
-  rw [mul_comm]
+      _ = f (k) * z^(-k) * z^(-n) := by rw[neg_add, zpow_add₀ z_neq_zero, mul_assoc]
 
+      _ = z^(-n) * (f (k) * z^(-k)) := by rw[mul_comm]
 
--- @[simp]
--- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
---   sorry
-
--- -- @[simp]
--- theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
---   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   let h := fun k => ∑' m : ℤ, f m * g (k - m)
---   let t := fun k => h k * z ^ (-k)
---   sorry
+theorem ZTransform_time_adv (f : DiscreteSignal) {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ) :
+  HasZTransform (fun k => f (k + n)) (fun z => z^n * F z) z := by
+    convert ZTransform_time_delay (z_neq_zero := z_neq_zero) hz (-n) using 2
+    <;> ring_nf
 
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
  (∀ (z : ROC), HasZTransform f F z) →
  (∀ z a : ℂ, z * a ∈ ROC → (HasZTransform (λ k ↦ a^ (-k) * f k) (fun z ↦ F (z * a)) z)) := by
   unfold HasZTransform -- HasSum (fun k ↦ f k * ↑z ^ (-k)) (F ↑z)) →  ∀ (z a : ℂ), z * a ∈ ROC → HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
-  intro h --  ∀ (z : ↑ROC), HasSum (fun k ↦ f k * ↑z ^ (-k)) (F ↑z)
-  intro z a hza --  z * a ∈ ROC ⊢ HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
-  have :  (λ k ↦ a ^ (-k) * f k * z ^ (-k)) =  (λ k ↦ (a*z)^(-k) * f k) := by
-    ext k
-    calc
-      a ^ (-k) * f k * z ^ (-k)
-        =  f k * a ^ (-k) * z ^ (-k) := by ring
-      _ = f k * (a * z)^ (-k) :=  by rw[mul_zpow, mul_assoc]
-      _ = (a * z) ^ (-k) * f k := by rw[mul_comm]
+  intro h z a hza --  z * a ∈ ROC ⊢ HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
 
-  simp only[this]
-  simp only[mul_comm] -- asSum (fun k ↦ (a * z) ^ (-k) * f k) (F (z * a))
-  exact h ⟨z * a, hza⟩
+  convert h ⟨z * a, hza⟩ using 2 with k
+  change a ^ (-k) * f k * z ^ (-k) = f k * (z * a) ^ (-k)
+  calc
+    a ^ (-k) * f k * z ^ (-k) =  f k * z ^ (-k) * a ^ (-k) := by ring
+    _ = f k * (z * a)^ (-k) :=  by rw[mul_zpow, mul_assoc]
+
 
 theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z‖ > 1) : IsStable x → IsCausal x → ZTransformable x z := by
   intro hs hc
