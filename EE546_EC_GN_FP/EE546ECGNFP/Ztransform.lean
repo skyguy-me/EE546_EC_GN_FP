@@ -394,16 +394,16 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
 
 /-
 # Properties of the Z-Transform
-| No. | Name                          | Formula                                                                                                                                  | Implementation |
-|----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|----------------|
-| 1   | **Linearity**                 | $ \mathcal{Z}\{a\,f_1(k) + b\,f_2(k)\} \;=\; a\,F_1(z)\;+\;b\,F_2(z)$                                                      | - [x]|
-| 2   | **Time Delay**                | $ \mathcal{Z}\{f(k - n)\} \;=\; z^{-n}\,F(z)$                                                                             | - [x]|
-| 3   | **Time Advance**              | $ \mathcal{Z}\{f(k + 1)\} \;=\; z\,F(z)\;-\;z\,f(0)$<br>$ \mathcal{Z}\{f(k + n)\} \;=\; z^n\,F(z)\;-\;z^{n-1}f(0)\;-\;\dots\;-\;z\,f(n-1)$ | [x]|
-| 4   | **Discrete-Time Convolution** | $ \mathcal{Z}\{f_1(k)\ast f_2(k)\} \;=\; F_1(z)\,F_2(z)$                                                                   | [ ]|
-| 5   | **Multiplication by Exponential** | $ \mathcal{Z}\{a^k\,f(k)\} \;=\; F(a\,z)$                                                                               | - [x]|
-| 6   | **Complex Differentiation**   | $ \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)$                                                   |[ ]|
-| 7   | **Final Value Theorem**       | $ f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)$                                       |[ ]|
-| 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |[ ]|
+| No. | Name                          | Formula                                                                                                                                  |
+|----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
+| 1   | **Linearity**                 | $ \mathcal{Z}\{a\,f_1(k) + b\,f_2(k)\} \;=\; a\,F_1(z)\;+\;b\,F_2(z)$                                                      |
+| 2   | **Time Delay**                | $ \mathcal{Z}\{f(k - n)\} \;=\; z^{-n}\,F(z)$                                                                             |
+| 3   | **Time Advance**              | $ \mathcal{Z}\{f(k + 1)\} \;=\; z\,F(z)\;-\;z\,f(0)$<br>$ \mathcal{Z}\{f(k + n)\} \;=\; z^n\,F(z)\;-\;z^{n-1}f(0)\;-\;\dots\;-\;z\,f(n-1)$ |
+| 4   | **Discrete-Time Convolution** | $ \mathcal{Z}\{f_1(k)\ast f_2(k)\} \;=\; F_1(z)\,F_2(z)$                                                                   |
+| 5   | **Multiplication by Exponential** | $ \mathcal{Z}\{a^k\,f(k)\} \;=\; F(a\,z)$                                                                               |
+| 6   | **Complex Differentiation**   | $ \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)$                                                   |
+| 7   | **Final Value Theorem**       | $ f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)$                                       |
+| 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |
 -/
 
 
