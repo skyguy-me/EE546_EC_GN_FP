@@ -11,8 +11,22 @@ Winter 2025<br />
 <br />
 
 
+The explosion of artificial Intelignece (AI) and Machine Learning (ML), has promoted rexamination many long standing prinicples in the field of control theory and applications <sup>1</sup>. From NVIDIA's latest COSMOS foundation models for physical AI development <sup>2</sup> to Harvard' Generalist Medical AI (GMAI) <sup>3</sup>, AI and ML are often used as a method of solving multi-objective, contrained optimization problems in numerous industries including aerospace, agricutlutral, medical, and robotics <sup>4-7</sup>. Given the high impact nature of these industries, there is a critical need for interpretable, generalizable, explainable, and, perhaps most importantly, certifiable models for safety critcal applications. One of the key challenges in ensuring safety and reliability in control systems is the rigorous verification of mathematical properties <sup>8</sup>. A traditional approach is to encode such systems using the language of control theory, understanding how such systems transform inputs into outputs, and then proving mathematical properties of these transformations. However, manual encoding and independent verification is not a scalable approach, given the rapid proliferation of AI/ML systems <sup>9</sup>. This highlights a key gap in current landscape: verificable and scalable methods of evaulavating and certification of the AI/ML models. Modern theorem provers, like Lean4, bridge this gap by providing a rigorous yet scalable approach for formal verification using mechanized proof techniques based on classsical approaches. The Z-transform is a foundational tool in the analysis of discrete-time control systems, but it is not well supported in Lean 4 and Mathlib's digital signal processing capabilities remain limited.
 
-The Z-transform is a key tool in the analysis of discrete-time control systems, yet formally verified solutions in lean 4 and matlib remain limited. To address this gap, we systematically attmempt to encode a standard Z-transform table into Lean and developed a robust library that allows control engineers to simplify Z-transform expressions using `simp_only[]`. Contrary to initial expectations, this effort proved more intricate than anticipated, owing to subtleties in representing and manipulating mathematical objects within a proof assistant. In this report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. We have successfully enclosed a set of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, the endeavor remains ongoing. Future work will expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust, formally verified Z-transform framework for control engineering applications.
+To address this gap, we propose encoding a standard Z-transform table into the language and additionally exposing APIs to interact with these definitions. Contrary to initial expectations, this effort proved more challenging than anticipated due to a lack of existing foundational results, either because they were wholly missing or because they were not specialized from more general results. In this report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. We have successfully enclosed a few of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, more efforts will be needed to meet the initial proposal. Future work should expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust and unified Z-transform verification framework for control engineering applications.
+
+
+<sub>[1]. Bensoussan, A., Li, Y., Nguyen, D.P.C., Tran, M.B., Yam, S.C.P. and Zhou, X., 2022. Machine learning and control theory. In Handbook of numerical analysis (Vol. 23, pp. 531-558). Elsevier </sub>
+<sub>[2]. Agarwal, N., Ali, A., Bala, M., Balaji, Y., Barker, E., Cai, T., Chattopadhyay, P., Chen, Y., Cui, Y., Ding, Y. and Dworakowski, D., 2025. Cosmos world foundation model platform for physical ai. arXiv preprint arXiv:2501.03575.</sub>
+<sub>[3]. Moor, M., Banerjee, O., Abad, Z.S.H., Krumholz, H.M., Leskovec, J., Topol, E.J. and Rajpurkar, P., 2023. Foundation models for generalist medical artificial intelligence. Nature, 616(7956), pp.259-265.</sub>
+<sub>[4]. Brunton, S.L., Nathan Kutz, J., Manohar, K., Aravkin, A.Y., Morgansen, K., Klemisch, J., Goebel, N., Buttrick, J., Poskin, J., Blom-Schieber, A.W. and Hogan, T., 2021. Data-driven aerospace engineering: reframing the industry with machine learning. Aiaa Journal, 59(8), pp.2820-2847.</sub>
+<sub>[5]. Eli-Chukwu, N.C., 2019. Applications of artificial intelligence in agriculture: A review. Engineering, Technology & Applied Science Research, 9(4).</sub>
+<sub>[6]. Chella, A., Iocchi, L., Macaluso, I. and Nardi, D., 2006. Artificial Intelligence and Robotics. Intelligenza Artificiale, 3(1-2), pp.87-93.</sub>
+<sub>[7]. Sun, Q., Akman, A. and Schuller, B.W., 2025. Explainable artificial intelligence for medical applications: A review. ACM Transactions on Computing for Healthcare, 6(2), pp.1-31.</sub>
+<sub>[8]. Prabhakar, P., 2011. Approximation based safety and stability verification of hybrid systems. University of Illinois at Urbana-Champaign.</sub>
+<sub>[9]. Kaminwar, S.R., Goschenhofer, J., Thomas, J., Thon, I. and Bischl, B., 2023. Structured verification of machine learning models in industrial settings. Big Data, 11(3), pp.181-198.</sub>
+
+
 
 ```hs
 import Mathlib.Analysis.Complex.Basic
@@ -25,6 +39,7 @@ import Mathlib.Topology.Algebra.InfiniteSum.Defs
 import Mathlib.Topology.Basic
 import Mathlib.Topology.Filter
 import Mathlib.Tactic.Linarith
+import Mathlib.Data.Complex.Basic
 ```
  <h2>Our custom Libraries</h2>
 
@@ -82,8 +97,10 @@ noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) :=
   ∑' k : ℤ, x (k) * z^(-k : ℤ)
 
 
+@[simp]
 def HasZTransform (f : DiscreteSignal) (F : ℂ → ℂ) (z : ℂ) := HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) (F z)
 
+@[simp]
 def ZTransformable (f : DiscreteSignal) (z : ℂ) := Summable fun k ↦ f k * z ^ (-k)
 
 @[simp]
@@ -143,19 +160,8 @@ $
 
 ```hs
 theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
-  rw[HasZTransform]
-  simp
-
-  have : ∀ k : ℤ, k - k₀ = 0 ↔ k = k₀ := by intro _; exact Int.sub_eq_zero
-  simp only[this]
-
-  have : ∀ k : ℤ, ∀ z : ℂ, (if k = k₀ then (z ^ k)⁻¹ else 0) = (if k = k₀ then z ^ (-k₀) else 0) := by
-    intro k _
-    by_cases hk : k = k₀
-    <;> simp[hk]
-
-  simp [this]
-  exact hasSum_ite_eq k₀ (z ^ k₀)⁻¹
+  simp[Int.sub_eq_zero]
+  convert hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 ```
 
 **2. Unit Step Function (`δ(k)`)**
@@ -222,10 +228,7 @@ This allows us to rewrite sums over ℤ in terms of sums over non-negative integ
 ```hs
 theorem causal_of_mul_unit_step (x : DiscreteSignal) :
     IsCausal (fun k : ℤ ↦ x k * u k) := by
-      intro k hk
-      change k < 0 at hk
-      have : ¬(k ≥ 0) := by exact Int.not_le.mpr hk
-      simp only[u, unit_step, this, reduceIte, mul_zero]
+      exact isCausal_of_mul_causal unit_step_causal
 ```
 This confirms that causal signals only depend on present and past values, which simplifies Z-transform computations.
 ```hs
@@ -270,19 +273,8 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
       intro hf
       apply Iff.intro
       . intro hmp
-        have h_ind : (fun k : ℤ ↦ f k * z^(-k : ℤ)) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * z^(-k : ℤ)) k) := by
-          ext k
-          by_cases hk : k < 0
-
-          . have : k ∉ NonNegInt := by exact Int.not_le.mpr hk
-            simp only[Set.indicator_of_not_mem this, hf k hk, zero_mul]
-
-          . simp[Int.not_lt] at hk
-            change k ∈ NonNegInt at hk
-            simp only[Set.indicator_of_mem hk]
-
-        rw[h_ind] at hmp
         simp only[ZTUnilateral_summable_equiv]
+        rw[indicator_of_IsCausal_mul hf] at hmp
         exact (summable_subtype_iff_indicator).mpr hmp
 
       . intro hmpr
@@ -292,12 +284,8 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
         . exact summable_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))
 
         . change Summable (fun k : NegInt ↦ f k * z ^ (-k : ℤ))
-          convert summable_zero with k
-          convert zero_mul (z ^ (-k : ℤ))
-          obtain ⟨k, hk⟩ := k
-          change k < 0 at hk
-          change f k = 0
-          exact hf k hk
+          refine summable_zero_of_causal (f := fun k ↦ f k * z ^ (-k : ℤ)) ?_
+          exact isCausal_of_causal_mul hf
 
         . change Summable (fun k : ↑NegIntᶜ ↦ f k * z ^ (-k : ℤ))
           rw[NegIntComp]
@@ -313,19 +301,8 @@ theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
       intro hf
       apply Iff.intro
       . intro hmp
-        have h_ind : (fun k : ℤ ↦ f k * z^(-k : ℤ)) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * z^(-k : ℤ)) k) := by
-          ext k
-          by_cases hk : k < 0
-
-          . have : k ∉ NonNegInt := by exact Int.not_le.mpr hk
-            simp only[Set.indicator_of_not_mem this, hf k hk, zero_mul]
-
-          . simp[Int.not_lt] at hk
-            change k ∈ NonNegInt at hk
-            simp only[Set.indicator_of_mem hk]
-
-        rw[h_ind] at hmp
         simp only[ZTUnilateral_hasSum_equiv]
+        rw[indicator_of_IsCausal_mul hf] at hmp
         exact (hasSum_subtype_iff_indicator).mpr hmp
 
       . intro hmpr
@@ -336,17 +313,12 @@ theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
         . rw[zero_add]
 
         . change HasSum (fun k : NegInt ↦ f k * z ^ (-k : ℤ)) 0
-          convert hasSum_zero with k
-          convert zero_mul (z ^ (-k : ℤ))
-          obtain ⟨k, hk⟩ := k
-          change k < 0 at hk
-          change f k = 0
-          exact hf k hk
+          refine hasSum_zero_of_causal (f := fun k ↦ f k * z ^ (-k : ℤ)) ?_
+          exact isCausal_of_causal_mul hf
 
         . change HasSum (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ)) S
           simp only[←ZTUnilateral_hasSum_equiv]
           exact hmpr
-
 
 
 theorem zt_sum_unit_step {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
@@ -361,15 +333,17 @@ The preceding sub-theorems systematically reduce summation complexity and enforc
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z ↦ (1 / (1 - z⁻¹))) z := by
   rw[HasZTransform]
 
-  have : ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) := by simp
-  simp only [this]
+  suffices ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) by
+    simp only [this]
 
-  refine' zt_sum_unit_step.mpr _
+    refine' zt_sum_unit_step.mpr _
+    simp
+    simp only[←inv_pow]
+
+    refine' hasSum_geometric_of_norm_lt_one _
+    rw[norm_inv, inv_lt_comm₀] <;> linarith
+
   simp
-  simp only[←inv_pow]
-
-  refine' hasSum_geometric_of_norm_lt_one _
-  rw[norm_inv, inv_lt_comm₀] <;> linarith
 ```
 -
 The rect function,from (a,b]), is defined as:
@@ -394,7 +368,6 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
 ```
 
 # Properties of the Z-Transform
-
 | No. | Name                          | Formula                                                                                                                                  |
 |----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
 | 1   | **Linearity**                 | $ \mathcal{Z}\{a\,f_1(k) + b\,f_2(k)\} \;=\; a\,F_1(z)\;+\;b\,F_2(z)$                                                      |
@@ -406,68 +379,75 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
 | 7   | **Final Value Theorem**       | $ f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)$                                       |
 | 8   | **Initial Value Theorem**     | $ f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)$                                                                   |
 
-
 ```hs
-theorem ZTransform_linear (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
-  HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
+theorem zt_mul_left (z : ℂ) (f₁ : DiscreteSignal) (F₁ : ℂ → ℂ) (a : ℂ)
+(hz₁ : HasZTransform f₁ F₁ z) :
+  HasZTransform (fun k => a * f₁ k) (fun z => a * F₁ z) z := by
   unfold HasZTransform
-  sorry
+  change HasSum (fun k ↦ a * f₁ k * z ^ (-k)) (( a * F₁ z))
+  simp only[mul_assoc]
+  apply HasSum.mul_left a hz₁
 
---   simp only[ZTransform]
---   calc
---   ∑' (k : ℤ), (a * f₁ k + b * f₂ k) * z ^ (-k) = ∑' (k : ℤ), (a * f₁ k * z ^ (-k) + b * f₂ k * z ^ (-k)) := by group
+theorem zt_mul_right (z : ℂ) (f₁ : DiscreteSignal) (F₁ : ℂ → ℂ) (a : ℂ)
+(hz₁ : HasZTransform f₁ F₁ z) :
+  HasZTransform (fun k => f₁ k * a) (fun z => F₁ z * a) z := by
+  unfold HasZTransform
+  change HasSum (fun k ↦  f₁  k  * a * z ^ (-k) ) ((F₁ z * a))
+  have: (λ k ↦ f₁  k  * a * z ^ (-k)) = (λ k ↦ f₁  k   * z ^ (-k) * a ):= by
+    ext k
+    ring_nf
+  -- ⊢ HasSum (fun k ↦ f₁ k * a * z ^ (-k)) (F₁ z * a)
+  simp only[this]
+  apply HasSum.mul_right a hz₁
 
---   _ = ∑' (k : ℤ), a * f₁ k * z ^ (-k) + ∑' (k : ℤ), b * f₂ k * z ^ (-k) := by
---     rw[tsum_add]
+theorem zt_add (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂: HasZTransform f₂ F₂ z) :
+   HasZTransform (fun k => f₁ k + f₂ k) (fun z => F₁ z + F₂ z) z := by
+    unfold HasZTransform -- (fun k ↦ (fun k ↦ f₁ k + f₂ k) k * z ^ (-k)) ((fun z ↦ F₁ z + F₂ z) z)
+    change HasSum (fun k ↦ (f₁ k + f₂ k) * z ^ (-k)) ( F₁ z + F₂ z)
+    have :  (fun k ↦ (f₁ k + f₂ k) * z ^ (-k)) = (fun k ↦(f₁ k) * z ^ (-k) + (f₂ k) * z ^ (-k)) := by
+      ext k
+      ring_nf
+    simp only[this]
+    apply HasSum.add  hz₁ hz₂
 
---   _ = ∑' (k : ℤ), a * (f₁ k * z ^ (-k)) + ∑' (k : ℤ), b * (f₂ k * z ^ (-k)) := by group
---   _ = a * ∑' (k : ℤ), f₁ k * z ^ (-k) + b * ∑' (k : ℤ), f₂ k * z ^ (-k) := by rw[tsum_mul_left, tsum_mul_left]
+theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
+  HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
+  convert zt_add z (fun k => a * f₁ k) (fun k => b * f₂ k) ?_ ?_ ?add_left ?add_right
+  <;> apply zt_mul_left
+  <;> assumption
 
--- @[simp]
--- theorem ZTransform_time_delay (f : DiscreteSignal) (n : ℤ) (z : ℂ) :  𝓩 (fun k => f (k - n)) z = z ^ (-n) * 𝓩 f z := by
---   simp only[ZTransform]
+@[simp]
+theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ)   :
+  HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z := by
+    unfold HasZTransform
+    change HasSum (fun k ↦ f (k - n) * z ^ (-k)) (z ^ (-n) * F z)
+    refine' (hasSum_int_shift n).mp _
+    convert hz.mul_left (z^(-n)) using 2 with k
+    calc
+      f (k + n - n) * z ^ (-(k + n)) = f (k) * z ^ (-(k + n)) := by
+        rw[add_sub_cancel_right]
 
---   let g := fun k : ℤ => f (k - n) * z ^ (-k)
---   let h := fun m : ℤ => f m * z ^ (-(m + n))
+      _ = f (k) * z^(-k) * z^(-n) := by rw[neg_add, zpow_add₀ z_neq_zero, mul_assoc]
 
---   have h_i : (fun k => f (k - n) * z ^ (-k)) = (fun m => f m * z ^ (-(m + n))) := by
---     ext m
---     -- ring_nf
---   sorry
+      _ = z^(-n) * (f (k) * z^(-k)) := by rw[mul_comm]
 
--- @[simp]
--- theorem ZTransform_time_advance_one (f : DiscreteSignal) (z : ℂ) : 𝓩 (fun k => f (k + 1)) z = z * 𝓩 f z - z * f 0 := by
---   sorry
-
--- @[simp]
--- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
---   sorry
-
--- -- @[simp]
--- theorem ZTransform_convolution (f g : DiscreteSignal) (z : ℂ) : 𝓩 (discrete_convolution f g) z = 𝓩 f z * 𝓩 g z := by
---   rw [ZTransform] -- ∑' (k : ℤ), discrete_convolution f g k * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   simp only [discrete_convolution] -- ∑' (k : ℤ), (∑' (m : ℤ), f m * g (k - m)) * z ^ (-k) = 𝓩 f z * 𝓩 g z
---   let h := fun k => ∑' m : ℤ, f m * g (k - m)
---   let t := fun k => h k * z ^ (-k)
---   sorry
+theorem ZTransform_time_adv (f : DiscreteSignal) {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ) :
+  HasZTransform (fun k => f (k + n)) (fun z => z^n * F z) z := by
+    convert ZTransform_time_delay (z_neq_zero := z_neq_zero) hz (-n) using 2
+    <;> ring_nf
 
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
  (∀ (z : ROC), HasZTransform f F z) →
- (∀ z a : ℂ, z * a ∈ ROC → (HasZTransform (λ k ↦ a^ (-k) * f k) z (F (z * a)))) := by
+ (∀ z a : ℂ, z * a ∈ ROC → (HasZTransform (λ k ↦ a^ (-k) * f k) (fun z ↦ F (z * a)) z)) := by
   unfold HasZTransform -- HasSum (fun k ↦ f k * ↑z ^ (-k)) (F ↑z)) →  ∀ (z a : ℂ), z * a ∈ ROC → HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
-  intro h --  ∀ (z : ↑ROC), HasSum (fun k ↦ f k * ↑z ^ (-k)) (F ↑z)
-  intro z a hza --  z * a ∈ ROC ⊢ HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
-  have :  (λ k ↦ a ^ (-k) * f k * z ^ (-k)) =  (λ k ↦ (a*z)^(-k) * f k) := by
-    ext k
-    calc
-      a ^ (-k) * f k * z ^ (-k)
-        =  f k * a ^ (-k) * z ^ (-k) := by ring
-      _ = f k * (a * z)^ (-k) :=  by rw[mul_zpow, mul_assoc]
-      _ = (a * z) ^ (-k) * f k := by rw[mul_comm]
+  intro h z a hza --  z * a ∈ ROC ⊢ HasSum (fun k ↦ (fun k ↦ a ^ (-k) * f k) k * z ^ (-k)) (F (z * a))
 
-  simp only[this]
-  simp only[mul_comm] -- asSum (fun k ↦ (a * z) ^ (-k) * f k) (F (z * a))
-  exact h ⟨z * a, hza⟩
+  convert h ⟨z * a, hza⟩ using 2 with k
+  change a ^ (-k) * f k * z ^ (-k) = f k * (z * a) ^ (-k)
+  calc
+    a ^ (-k) * f k * z ^ (-k) =  f k * z ^ (-k) * a ^ (-k) := by ring
+    _ = f k * (z * a)^ (-k) :=  by rw[mul_zpow, mul_assoc]
+
 
 theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z‖ > 1) : IsStable x → IsCausal x → ZTransformable x z := by
   intro hs hc
@@ -492,8 +472,6 @@ theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc
       _ ≤ ‖m‖ * ‖z ^ (-n : ℤ)‖ := by
         have : m ≤ ‖m‖ := by exact Real.le_norm_self m
         rel[this]
-
-
 
 
 theorem zt_FinalValueTheorem
