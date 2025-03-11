@@ -371,9 +371,8 @@ The rect function,from (a,b]), is defined as:
 
 /-
 **2. Rect Function (`R(k)`)**
-The **unit step function**, which reperent causality in discrete time signals is defined as:
+The **rectfunction**, which represent a signal that is non-zero for  definite, positive interval:
 -/
-
 
 @[simp]
 def rect (a b : ℤ) (k : ℤ) :=
