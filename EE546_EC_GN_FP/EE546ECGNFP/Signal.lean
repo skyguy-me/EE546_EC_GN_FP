@@ -1,3 +1,17 @@
+/-
+<center><h1>Signal definitions for Lean4 Z-transform  implementation</h1></center>
+<center><h2>Final Project WI 25 EE-546 B</h2></center>
+
+<center>
+Department of Electrical and Computer Engineering<br />
+Unviersity of Washington<br />
+Ember Chow and Gokul Nathan<br />
+Winter 2025<br />
+</center>
+<br />
+
+-/
+
 import Mathlib.Data.Complex.Basic
 import Mathlib.Data.Complex.Norm
 import Mathlib.Topology.Filter
@@ -133,4 +147,3 @@ theorem hasFinalValue_implies_isStable (x : DiscreteSignal) (xf : ℂ) :
       intro h
       use xf
       exact h
-
