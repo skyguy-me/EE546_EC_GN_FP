@@ -1,3 +1,17 @@
+/-
+<center><h1>Lean4 Fourier-transform  implementation</h1></center>
+<center><h2>Final Project WI 25 EE-546 B</h2></center>
+
+<center>
+Department of Electrical and Computer Engineering<br />
+Unviersity of Washington<br />
+Ember Chow and Gokul Nathan<br />
+Winter 2025<br />
+</center>
+<br />
+
+-/
+
 import Mathlib.Analysis.Distribution.SchwartzSpace
 import Mathlib.Analysis.Distribution.FourierSchwartz
 import Mathlib.Data.Real.Basic
