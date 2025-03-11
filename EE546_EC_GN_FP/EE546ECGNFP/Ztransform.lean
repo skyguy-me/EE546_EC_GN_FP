@@ -489,15 +489,6 @@ theorem ZTransform_time_delay (f : DiscreteSignal) (F: ℂ → ℂ) (n : ℤ) (z
   rw [mul_comm]
 
 
-
---- (fun k ↦ f (k + n - n) * z ^ (-(k + n))) = fun k ↦ f k * z ^ (-k) * z ^ (-n) ⊢ HasSum (fun k ↦ f k * z ^ (-k) * z ^ (-n)) (z ^ (-n) * F z)
-
-
-
-
-
-
-
 -- @[simp]
 -- theorem ZTransform_time_advance_n (f : DiscreteSignal) (n : ℕ) (z : ℂ) : 𝓩 (fun k => f (k + n)) z = z^n * 𝓩 f z - ∑ i in Finset.range n, z^(n - i) * f i := by
 --   sorry
@@ -551,8 +542,6 @@ theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc
       _ ≤ ‖m‖ * ‖z ^ (-n : ℤ)‖ := by
         have : m ≤ ‖m‖ := by exact Real.le_norm_self m
         rel[this]
-
-
 
 
 theorem zt_FinalValueTheorem
