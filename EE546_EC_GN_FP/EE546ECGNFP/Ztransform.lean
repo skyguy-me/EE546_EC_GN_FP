@@ -233,10 +233,7 @@ theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
 
 theorem causal_of_mul_unit_step (x : DiscreteSignal) :
     IsCausal (fun k : ℤ ↦ x k * u k) := by
-      intro k hk
-      change k < 0 at hk
-      have : ¬(k ≥ 0) := by exact Int.not_le.mpr hk
-      simp only[u, unit_step, this, reduceIte, mul_zero]
+      exact isCausal_of_mul_causal unit_step_causal
 
 /-This confirms that causal signals only depend on present and past values, which simplifies Z-transform computations.-/
 
@@ -286,18 +283,7 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
       apply Iff.intro
       . intro hmp
         simp only[ZTUnilateral_summable_equiv]
-        have h_ind : (fun k : ℤ ↦ f k * z^(-k : ℤ)) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * z^(-k : ℤ)) k) := by
-          ext k
-          by_cases hk : k < 0
-
-          . have : k ∉ NonNegInt := by exact Int.not_le.mpr hk
-            simp only[Set.indicator_of_not_mem this, hf k hk, zero_mul]
-
-          . simp[Int.not_lt] at hk
-            change k ∈ NonNegInt at hk
-            simp only[Set.indicator_of_mem hk]
-
-        rw[h_ind] at hmp
+        rw[indicator_of_IsCausal_mul hf] at hmp
         exact (summable_subtype_iff_indicator).mpr hmp
 
       . intro hmpr
@@ -307,12 +293,8 @@ theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
         . exact summable_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))
 
         . change Summable (fun k : NegInt ↦ f k * z ^ (-k : ℤ))
-          convert summable_zero with k
-          convert zero_mul (z ^ (-k : ℤ))
-          obtain ⟨k, hk⟩ := k
-          change k < 0 at hk
-          change f k = 0
-          exact hf k hk
+          refine summable_zero_of_causal (f := fun k ↦ f k * z ^ (-k : ℤ)) ?_
+          exact isCausal_of_causal_mul hf
 
         . change Summable (fun k : ↑NegIntᶜ ↦ f k * z ^ (-k : ℤ))
           rw[NegIntComp]
@@ -329,19 +311,8 @@ theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
       intro hf
       apply Iff.intro
       . intro hmp
-        have h_ind : (fun k : ℤ ↦ f k * z^(-k : ℤ)) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * z^(-k : ℤ)) k) := by
-          ext k
-          by_cases hk : k < 0
-
-          . have : k ∉ NonNegInt := by exact Int.not_le.mpr hk
-            simp only[Set.indicator_of_not_mem this, hf k hk, zero_mul]
-
-          . simp[Int.not_lt] at hk
-            change k ∈ NonNegInt at hk
-            simp only[Set.indicator_of_mem hk]
-
-        rw[h_ind] at hmp
         simp only[ZTUnilateral_hasSum_equiv]
+        rw[indicator_of_IsCausal_mul hf] at hmp
         exact (hasSum_subtype_iff_indicator).mpr hmp
 
       . intro hmpr
@@ -352,17 +323,12 @@ theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
         . rw[zero_add]
 
         . change HasSum (fun k : NegInt ↦ f k * z ^ (-k : ℤ)) 0
-          convert hasSum_zero with k
-          convert zero_mul (z ^ (-k : ℤ))
-          obtain ⟨k, hk⟩ := k
-          change k < 0 at hk
-          change f k = 0
-          exact hf k hk
+          refine hasSum_zero_of_causal (f := fun k ↦ f k * z ^ (-k : ℤ)) ?_
+          exact isCausal_of_causal_mul hf
 
         . change HasSum (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ)) S
           simp only[←ZTUnilateral_hasSum_equiv]
           exact hmpr
-
 
 
 theorem zt_sum_unit_step {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
@@ -378,17 +344,19 @@ theorem zt_sum_unit_step {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
 theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z ↦ (1 / (1 - z⁻¹))) z := by
   rw[HasZTransform]
 
-  have : ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) := by simp
-  simp only [this]
+  suffices ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) by
+    simp only [this]
 
-  refine' zt_sum_unit_step.mpr _
+    refine' zt_sum_unit_step.mpr _
+    simp
+    simp only[←inv_pow]
+
+    refine' hasSum_geometric_of_norm_lt_one _
+    rw[norm_inv, inv_lt_comm₀] <;> linarith
+
   simp
-  simp only[←inv_pow]
 
-  refine' hasSum_geometric_of_norm_lt_one _
-  rw[norm_inv, inv_lt_comm₀] <;> linarith
-
-/--
+  /--
 The rect function,from (a,b]), is defined as:
 -/
 
