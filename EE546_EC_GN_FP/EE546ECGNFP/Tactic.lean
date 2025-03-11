@@ -1,3 +1,17 @@
+/-
+<center><h1>Tactics supporting Lean4 implementation of Z-transforms</h1></center>
+<center><h2>Final Project WI 25 EE-546 B</h2></center>
+
+<center>
+Department of Electrical and Computer Engineering<br />
+Unviersity of Washington<br />
+Ember Chow and Gokul Nathan<br />
+Winter 2025<br />
+</center>
+<br />
+
+-/
+
 import Lean
 import Lean.Elab.Tactic
 import Mathlib.Tactic
