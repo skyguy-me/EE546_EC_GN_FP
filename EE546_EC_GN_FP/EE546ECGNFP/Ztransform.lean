@@ -27,7 +27,10 @@ Winter 2025<br />
 
 -/
 
-/-The explosion of artificial Intelignece (AI) and Machine Learning (ML), has promoted rexamination many long standing prinicples in the field of control theory and applications <sup>1</sup>. From NVIDIA's latest COSMOS foundation models for physical AI development <sup>2</sup> to Harvard' Generalist Medical AI (GMAI) <sup>3</sup>, AI and ML are often used as a method of solving multi-objective, contrained optimization problems in numerous industries including aerospace, agricutlutral, medical, and robotics <sup>4-7</sup>. Given the high impact nature of these industries, there is a critical need for interpretable, generalizable, explainable, and, perhaps most importantly, certifiable models for safety critcal applications. One of the key challenges in ensuring safety and reliability in control systems is the rigorous verification of mathematical properties <sup>8</sup>. A traditional approach is to encode such systems using the language of control theory, understanding how such systems transform inputs into outputs, and then proving mathematical properties of these transformations. However, manual encoding and independent verification is not a scalable approach, given the rapid proliferation of AI/ML systems <sup>9</sup>. This highlights a key gap in current landscape: verificable and scalable methods of evaulavating and certification of the AI/ML models. Modern theorem provers, like Lean4, bridge this gap by providing a rigorous yet scalable approach for formal verification using mechanized proof techniques based on classsical approaches. The Z-transform is a foundational tool in the analysis of discrete-time control systems, but it is not well supported in Lean 4 and Mathlib's digital signal processing capabilities remain limited.
+/-
+<center><h2>Project Abstract and Overview</h2></center>
+
+The explosion of artificial Intelignece (AI) and Machine Learning (ML), has promoted rexamination many long standing prinicples in the field of control theory and applications <sup>1</sup>. From NVIDIA's latest COSMOS foundation models for physical AI development <sup>2</sup> to Harvard' Generalist Medical AI (GMAI) <sup>3</sup>, AI and ML are often used as a method of solving multi-objective, contrained optimization problems in numerous industries including aerospace, agricutlutral, medical, and robotics <sup>4-7</sup>. Given the high impact nature of these industries, there is a critical need for interpretable, generalizable, explainable, and, perhaps most importantly, certifiable models for safety critcal applications. One of the key challenges in ensuring safety and reliability in control systems is the rigorous verification of mathematical properties <sup>8</sup>. A traditional approach is to encode such systems using the language of control theory, understanding how such systems transform inputs into outputs, and then proving mathematical properties of these transformations. However, manual encoding and independent verification is not a scalable approach, given the rapid proliferation of AI/ML systems <sup>9</sup>. This highlights a key gap in current landscape: verificable and scalable methods of evaulavating and certification of the AI/ML models. Modern theorem provers, like Lean4, bridge this gap by providing a rigorous yet scalable approach for formal verification using mechanized proof techniques based on classsical approaches. The Z-transform is a foundational tool in the analysis of discrete-time control systems, but it is not well supported in Lean 4 and Mathlib's digital signal processing capabilities remain limited.
 
 To address this gap, we propose encoding a standard Z-transform table, as described in <sup>10</sup>, into the language and additionally exposing APIs to interact with these definitions. Contrary to initial expectations, this effort proved more challenging than anticipated due to a lack of existing foundational results, either because they were wholly missing or because they were not specialized from more general results. In this retrospective report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. The authors have successfully enclosed a few of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, more efforts will be needed to meet the initial proposal. Future work should expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust and unified Z-transform verification framework for control engineering applications.
 
@@ -71,39 +74,68 @@ import Mathlib.Topology.Filter
 import Mathlib.Tactic.Linarith
 
 
-/- <h2>Our custom Libraries</h2>
+/-
+<center><h2>Introductions to Z-transforms</h2></center>
 
-`Defs.lean[]` serves as the fundamental definitions file. It provides the basic mathematical structures and operations essential for encoding discrete-time signals, their properties, and the Z-transform in Lean. By collecting these primitives into a single, well-organized file, the project ensures that all higher-level modules rely on a consistent and rigorously defined foundation.
+This project focuses on implementing and exploring the Z-transform, a crucial mathematical tool for analyzing discrete-time signals and systems in the field of signal processing. The Z-transform transforms discrete signals from the time domain into the complex frequency domain, enabling more efficient analysis and manipulation of signals. The Z-transform is defined as:
 
-**Key Components**
+\[
+\mathcal{Z}\{x[n]\} = X(z) = \sum_{k=-\infty}^{\infty} x[k] z^{-k}
+\]
 
-1. **Discrete-Time Sequences**
-   -Formalizes signals as functions `ℤ → α` (or subsets of `ℤ`), enabling precise manipulation of time-indexed data.
-   - Used for: Forms the bedrock for proving common operations such as shifting, summation, and scaling on discrete-time signals.
+Where:
+- \( x[k] \) is the discrete-time signal,
+- \( z \) is a complex variable,
+- \( X(z) \) is the Z-transform of \( x[k] \).
 
-2. **Basic Operators and Functions**
-   - Defines pointwise addition and scalar multiplication for signals, laying the groundwork for linear algebraic treatments in the Z-domain.
-   -Used for:Encodes time shifts (left or right), essential for handling transforms of delayed signals.
+This transformation is widely used in systems analysis, particularly in the design of digital filters and stability analysis of discrete-time systems. In this project, we've defined several types and functions in Lean to formalize the concept of the Z-transform for discrete-time signals.
 
-3. **Notation and Typeclasses**
-   - Introduces the relevant typeclasses (e.g., for real or complex coefficients) to unify signal definitions and operations.
-   - Used for:Simplifies theorem statements and proofs through user-friendly notation, reducing boilerplate and improving readability.
+The **Z-transform** of a discrete signal \( x \) is defined as `noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) := ∑' k : ℤ, x(k) * z^(-k : ℤ)`, which sums over all integer values of \( k \), multiplying each value of the signal \( x(k) \) by the complex number \( z \) raised to the power of \( -k \). We also define a condition for the existence of the Z-transform for a given signal \( f \) with `def HasZTransform (f : DiscreteSignal) (F : ℂ → ℂ) (z : ℂ) := HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) (F z)`, asserting that the signal \( f \) has a Z-transform \( F(z) \) if the sum converges for all \( k \in \mathbb{Z} \).
 
+A signal is considered **Z-transformable** if it satisfies the condition that the summation is **summable**: `def ZTransformable (f : DiscreteSignal) (z : ℂ) := Summable fun k ↦ f k * z ^ (-k)`, checking whether the sum of the signal values multiplied by \( z^{-k} \) is finite for some complex number \( z \).
 
-`Signal.lean` formalizes signal properties central to control engineering, such as causality and linearity. These properties are crucial for thorough and rigorous Z-transform proofs.
+The **unilateral Z-transform** is a variant of the Z-transform where the summation only runs over non-negative integers (i.e., \( k \geq 0 \)) and is defined as `noncomputable def ZTransformUnilateral (x : DiscreteSignal) (z : ℂ) := ∑' k : ℕ, x(k) * z^(-k : ℤ)`, useful for one-sided discrete-time signals, typically encountered in causal systems. An alternate form of the unilateral Z-transform is defined with a non-negative integer type as `noncomputable def ZTransformUnilateral' (x : DiscreteSignal) (z : ℂ) := ∑' k : NonNegInt, x(k) * z ^ (-↑k : ℤ)`.
 
-**Key Components**
+The **Discrete-Time Fourier Transform (DTFT)** is closely related to the Z-transform, used to analyze signals in the frequency domain, and is given by `noncomputable def DiscreteTimeFourierTransform (x : DiscreteSignal) (ω : ℝ) := ∑' k : ℤ, x(k) * Complex.exp (-j * ω * k)`, which sums over all integers \( k \), with each value of the signal \( x(k) \) multiplied by a complex exponential \( e^{-j \omega k} \).
 
-1. **Signal Properties**
-   - **Causality**: Defines when a signal is zero for times before a given reference, vital for modeling physically realizable systems.
-   - **Linearity**: Establishes conditions for superposition and homogeneity in signals, enabling straightforward reasoning about linear systems.
+For convenience, we define some aliases for the Z-transform and DTFT with `alias ZT := ZTransform` and `alias DTFT := DiscreteTimeFourierTransform`, allowing us to use shorthand notation. Finally, we define custom notation for the Z-transform and DTFT with `notation "𝓩" => ZTransform`, `notation "𝓩_u" => ZTransformUnilateral`, and `notation "𝓕_d" => DiscreteTimeFourierTransform`, making the expressions more concise.
 
-2. **Signal Constructions**
-   - Provides examples like impulse, step, and ramp signals, along with foundational proofs of their properties.
-   - Demonstrates how signals can be combined (e.g., summed or shifted) while preserving or modifying fundamental attributes.
+This project aims to provide a formal and computational framework for the Z-transform and related transforms like the DTFT. By implementing these definitions in Lean, we can rigorously analyze discrete-time signals, explore their properties, and apply these transforms in various signal processing tasks such as system analysis, filter design, and stability analysis.
 
-3. **Theorems and Lemmas**
-   - Supplies initial proofs and templates for reasoning about signal transformations.
+-/
+
+/-
+<h2> Approach: solving challenges while maintaing robust future development directions </h2>
+Our approach to implementing the Z-transform in Lean 4 follows a top-down methodology, beginning with an in-depth examination of the foundational content available in Mathlib. During this examination, we identified a gap in how certain critical aspects of signal processing, specifically the Z-transform, were represented and handled. This gap led us to define and implement our own set of core principles and structures, building from the ground up to support the Z-transform and its applications.
+
+To implement Z-transform tables, the first step was to define the Z-transform itself, along with the essential properties surrounding it. This required an understanding of the mathematical and computational aspects of the Z-transform, such as convergence, summability, and the relationship between time and frequency domains. The next step in the process was to define a representation for discrete sampled signals, as these form the basic unit of analysis in signal processing.
+
+Defining signals necessitated a more foundational exploration into key mathematical structures. We had to define properties around sets, monoids, complex numbers, natural numbers, and more. These fundamental structures were not readily available in the form needed for signal processing tasks, so we built them from scratch while leveraging existing Mathlib structures when possible. This required careful consideration of how these mathematical entities interact with one another to ensure that we could build a robust and scalable framework for signal analysis.
+
+These new definitions and the resulting infrastructure were then integrated with Mathlib's existing framework, expanding it to support signal processing applications. This complex chain of dependencies highlights the evolving state of engineering theories and proofs in Lean 4. Our work contributes to Lean 4's growing capabilities in formalizing engineering concepts, offering both theoretical rigor and practical utility.
+
+Our contributions lay a strong foundation for future developments in engineering applications within Lean 4, especially in areas like Fourier transforms, Laplace transforms, signals, and systems. We have focused on creating a framework that is compatible with Mathlib while also making distinct contributions that are geared towards engineers and practical applications rather than pure mathematical abstractions. This effort opens up potential directions for formalizing more engineering-specific content, filling the gaps that previously existed and enabling engineers to use Lean 4 as a formal tool for analyzing and designing systems in signal processing, control theory, and related fields.
+
+-/
+
+/- <h3>Our custom Libraries</h>
+
+Having outlined our top-down approach and the foundational work behind implementing the Z-transform in Lean 4, we now turn to the three core definition files that follow this method. These files serve as the backbone of the project, each contributing to the larger goal of creating a comprehensive, rigorously defined framework for signal processing and Z-transform applications in Lean 4.
+
+### `Defs.lean`
+
+`Defs.lean` serves as a crucial definitions file, providing the basic mathematical structures and operations that are essential for encoding discrete-time signals, their properties, and the Z-transform in Lean. This file acts as the foundational layer upon which all higher-level modules are built. By collecting these essential primitives into a single, well-organized file, `Defs.lean` ensures that the project relies on a consistent and rigorously defined base. These structures, such as sets, monoids, complex numbers, and natural numbers, are key building blocks that allow for the formalization of more complex signal processing concepts.
+
+### `Signals.lean`
+
+`Signals.lean` serves as the fundamental file for encoding the properties of the signals being studied and their behavior in the context of the Z-transform. This file extends the foundational structures defined in `Defs.lean` to provide specific representations and operations related to discrete-time signals. It is in this file that the core mathematical structures for signals are formalized, ensuring that all signal properties and operations are consistent with the project’s overall framework. `Signals.lean` ensures that the signals we work with can be manipulated, transformed, and analyzed in a mathematically sound manner, enabling us to apply the Z-transform and other related operations effectively.
+
+### `ZtransformProperties.lean`
+
+`ZtransformProperties.lean` is the key file for defining the core properties of the Z-transform itself. Building upon the signal definitions in `Signals.lean`, this file encodes the essential properties and operations required to define and manipulate the Z-transform. It includes definitions of convergence, summability, and the mapping between time-domain signals and their Z-domain representations. This file is fundamental in establishing the theoretical framework for the Z-transform, ensuring that all subsequent work involving the Z-transform is rooted in a rigorous and well-defined foundation. By clearly separating the properties of the Z-transform from other signal processing operations, `ZtransformProperties.lean` keeps the project modular and well-organized.
+
+Each of these three files plays a vital role in establishing a solid foundation for the project. Together, they provide the core mathematical structures and operations necessary to study and manipulate discrete-time signals and the Z-transform in Lean 4.
+
 
 -/
 
@@ -116,42 +148,6 @@ open Filter Topology Controls Controls.Discrete
 set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
 
-
--- @[simp]
--- noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) :=
---   ∑' k : ℤ, x (k) * z^(-k : ℤ)
-
-
--- @[simp]
--- def HasZTransform (f : DiscreteSignal) (F : ℂ → ℂ) (z : ℂ) := HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) (F z)
-
--- @[simp]
--- def ZTransformable (f : DiscreteSignal) (z : ℂ) := Summable fun k ↦ f k * z ^ (-k)
-
--- @[simp]
--- noncomputable def ZTransformUnilateral (x : DiscreteSignal) (z : ℂ) :=
---   ∑' k : ℕ, x (k) * z^(-k : ℤ)
-
--- def HasZTransformUnilateral (x : DiscreteSignal) (z : ℂ) := HasSum (fun (n : ℕ) ↦ x n * z ^ (-n : ℤ))
-
--- @[simp]
--- noncomputable def ZTransformUnilateral' (x : DiscreteSignal) (z : ℂ) :=
---   ∑' k : NonNegInt, x (k) * z ^ (-↑k : ℤ)
-
--- @[simp]
--- noncomputable def DiscreteTimeFourierTransform (x : DiscreteSignal) (ω : ℝ) :=
---   ∑' k : ℤ, x (k) * Complex.exp (-j * ω * k)
-
--- @[simp]
--- alias ZT := ZTransform
-
--- @[simp]
--- alias DTFT := DiscreteTimeFourierTransform
-
--- notation "𝓩" => ZTransform
--- notation "𝓩_u" => ZTransformUnilateral
--- notation "𝓕_d" => DiscreteTimeFourierTransform
-
 variable (x : DiscreteSignal)
 
 
@@ -160,23 +156,6 @@ In this section, we define and analyze three fundamental discrete-time signals: 
 -/
 
 
-/-
-**1. Unit Impulse Function (`δ(k)`)**
-The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
--/
-
-@[simp]
-def unit_impulse (k : ℤ) : ℂ :=
-  if k = 0 then 1 else 0
-/-This function acts as an identity under convolution and is fundamental for analyzing system responses. The impulse function can be equivalently expressed using a set indicator function:-/
-
-theorem unit_impulse_equiv_indicator :
-    ∀ k : ℤ, unit_impulse k = Set.indicator {0} 1 k := by
-  intro k
-  by_cases k_zero : k = 0
-  <;> simp[k_zero]
-
-notation "δ" => unit_impulse
 
 
 /-We now attempt to prove one of the fundamental Z-transform relationships:
@@ -188,54 +167,16 @@ $
 -/
 
 
-theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
-  simp[Int.sub_eq_zero]
-  convert hasSum_ite_eq k₀ (z ^ k₀)⁻¹
 
-/-
-**2. Unit Step Function (`δ(k)`)**
-The **unit step function**, which reperent causality in discrete time signals is defined as:
--/
 
-@[simp]
-def unit_step (k : ℤ) : ℂ :=
-  if k ≥ 0 then 1 else 0
 
 /-
 we now expand the defiriniton of all unit step function to include non-negative, positive (these have to be shown to be equivalent) and negtive indices. We do this to force coercion for lean 4
 -/
 
-@[simp]
-theorem unit_step_of_nat : ∀ (n : ℕ), unit_step n = 1 := by
-  intro n
-  simp
 
-@[simp]
-theorem unit_step_of_nonneg : ∀ (k : NonNegInt), unit_step k = 1 := by
-  intro ⟨k, hk⟩
-  simp
-  exact hk
 
-@[simp]
-theorem unit_step_of_pos : ∀ (k : PosInt), unit_step k = 1 := by
-  intro ⟨k, hk⟩
-  simp
-  exact Int.le_of_lt hk
 
-@[simp]
-theorem unit_step_of_neg : ∀ (k : NegInt), unit_step k = 0 := by
-  intro ⟨k, hk⟩
-  simp
-  exact hk
-
-theorem unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicator 1 k := by
-  intro k
-  unfold NonNegInt
-  by_cases k_pos : k ≥ 0
-  <;> simp[k_pos]
-
-alias u := unit_step
-alias H := unit_step
 
 /-In this sub-section, we provide a detailed explanation of several key theorems related to the unit step function `unit_step` (aliased as `u`). These theorems establish fundamental properties such as causality and summability, and they show how multiplication by the unit step function affects discrete-time signals. Specifically, we establish that multiplying a signal by \( u(k) \) enforces causality and preserves summability.
 
@@ -243,32 +184,7 @@ We formalize these properties in Lean so that the **causal nature of our signals
 
 These causal properties allow us to **exploit simplifications** in proofs, ensuring that when working with the Z-transform of causal signals, we can restrict summation to the non-negative domain, rather than dealing with the entire integer set $ \mathbb{Z} $.-/
 
-theorem unit_step_causal : IsCausal unit_step := by simp[IsCausal]
 
-@[simp]
-theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
-    HasSum (fun (n : ℕ) ↦ u n * f n) S ↔
-    HasSum (fun (n : ℕ) ↦ f n) S := by
-      simp only[u, unit_step_of_nat, one_mul]
-
-/-This allows us to rewrite sums over ℤ in terms of sums over non-negative integers only, a key step when handling Z-transform proofs for causal signals.-/
-
-
-
-theorem causal_of_mul_unit_step (x : DiscreteSignal) :
-    IsCausal (fun k : ℤ ↦ x k * u k) := by
-      exact isCausal_of_mul_causal unit_step_causal
-
-/-This confirms that causal signals only depend on present and past values, which simplifies Z-transform computations.-/
-
-
-
-theorem causal_of_unit_step_mul (x : DiscreteSignal) :
-    IsCausal (fun k : ℤ ↦ u k * x k) := by
-      simp only[mul_comm]
-      exact causal_of_mul_unit_step x
-
-/-This means we can safely reorder terms in proofs without worrying about violating causality-/
 
 
 
@@ -380,18 +296,7 @@ theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z �
 
   simp
 
-  /--
-The rect function,from (a,b]), is defined as:
--/
 
-/-
-**2. Rect Function (`R(k)`)**
-The **rectfunction**, which represent a signal that is non-zero for  definite, positive interval:
--/
-
-@[simp]
-def rect (a b : ℤ) (k : ℤ) :=
-  unit_step (k - a) - unit_step (k - b)
 
 
 

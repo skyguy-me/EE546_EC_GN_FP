@@ -201,3 +201,104 @@ theorem indicator_of_mul_IsCausal {f : DiscreteSignal} {g : DiscreteSignal} (hf 
   (fun k : ℤ ↦ g k * f k) = fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ g k * f k) k := by
     convert indicator_of_IsCausal_mul hf (g := g) using 2
     <;> simp[mul_comm]
+
+/-
+**1. Unit Impulse Function (`δ(k)`)**
+The **unit impulse function**, also known as the **Kronecker delta function**, is defined as:
+-/
+
+@[simp]
+def unit_impulse (k : ℤ) : ℂ :=
+  if k = 0 then 1 else 0
+/-This function acts as an identity under convolution and is fundamental for analyzing system responses. The impulse function can be equivalently expressed using a set indicator function:-/
+
+theorem unit_impulse_equiv_indicator :
+    ∀ k : ℤ, unit_impulse k = Set.indicator {0} 1 k := by
+  intro k
+  by_cases k_zero : k = 0
+  <;> simp[k_zero]
+
+notation "δ" => unit_impulse
+
+/-
+**2. Unit Step Function (`δ(k)`)**
+The **unit step function**, which reperent causality in discrete time signals is defined as:
+-/
+
+
+@[simp]
+def unit_step (k : ℤ) : ℂ :=
+  if k ≥ 0 then 1 else 0
+
+alias u := unit_step
+alias H := unit_step
+
+@[simp]
+theorem unit_step_of_nat : ∀ (n : ℕ), unit_step n = 1 := by
+  intro n
+  simp
+
+@[simp]
+theorem unit_step_of_nonneg : ∀ (k : NonNegInt), unit_step k = 1 := by
+  intro ⟨k, hk⟩
+  simp
+  exact hk
+
+@[simp]
+theorem unit_step_of_pos : ∀ (k : PosInt), unit_step k = 1 := by
+  intro ⟨k, hk⟩
+  simp
+  exact Int.le_of_lt hk
+
+@[simp]
+theorem unit_step_of_neg : ∀ (k : NegInt), unit_step k = 0 := by
+  intro ⟨k, hk⟩
+  simp
+  exact hk
+
+theorem unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicator 1 k := by
+  intro k
+  unfold NonNegInt
+  by_cases k_pos : k ≥ 0
+  <;> simp[k_pos]
+
+theorem unit_step_causal : IsCausal unit_step := by simp[IsCausal]
+
+@[simp]
+theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
+    HasSum (fun (n : ℕ) ↦ u n * f n) S ↔
+    HasSum (fun (n : ℕ) ↦ f n) S := by
+      simp only[u, unit_step_of_nat, one_mul]
+
+/-This allows us to rewrite sums over ℤ in terms of sums over non-negative integers only, a key step when handling Z-transform proofs for causal signals.-/
+
+
+
+theorem causal_of_mul_unit_step (x : DiscreteSignal) :
+    IsCausal (fun k : ℤ ↦ x k * u k) := by
+      exact isCausal_of_mul_causal unit_step_causal
+
+/-This confirms that causal signals only depend on present and past values, which simplifies Z-transform computations.-/
+
+
+
+theorem causal_of_unit_step_mul (x : DiscreteSignal) :
+    IsCausal (fun k : ℤ ↦ u k * x k) := by
+      simp only[mul_comm]
+      exact causal_of_mul_unit_step x
+
+/-This means we can safely reorder terms in proofs without worrying about violating causality-/
+
+
+  /--
+The rect function,from (a,b]), is defined as:
+-/
+
+/-
+**2. Rect Function (`R(k)`)**
+The **rectfunction**, which represent a signal that is non-zero for  definite, positive interval:
+-/
+
+@[simp]
+def rect (a b : ℤ) (k : ℤ) :=
+  unit_step (k - a) - unit_step (k - b)

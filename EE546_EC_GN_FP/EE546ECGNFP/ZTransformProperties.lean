@@ -39,10 +39,10 @@ open Filter Topology Controls Controls.Discrete
 set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
 
+-- Basic Definiton of Z-transforms
 @[simp]
 noncomputable def ZTransform (x : DiscreteSignal) (z : ℂ) :=
   ∑' k : ℤ, x (k) * z^(-k : ℤ)
-
 
 @[simp]
 def HasZTransform (f : DiscreteSignal) (F : ℂ → ℂ) (z : ℂ) := HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) (F z)
@@ -73,3 +73,7 @@ alias DTFT := DiscreteTimeFourierTransform
 notation "𝓩" => ZTransform
 notation "𝓩_u" => ZTransformUnilateral
 notation "𝓕_d" => DiscreteTimeFourierTransform
+
+theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
+  simp[Int.sub_eq_zero]
+  convert hasSum_ite_eq k₀ (z ^ k₀)⁻¹
