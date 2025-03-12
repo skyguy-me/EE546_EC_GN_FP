@@ -147,3 +147,41 @@ theorem hasFinalValue_implies_isStable (x : DiscreteSignal) (xf : ℂ) :
       intro h
       use xf
       exact h
+
+theorem isCausal_of_mul_causal {f g : DiscreteSignal} (hf : IsCausal f) : IsCausal (fun k ↦ g k * f k) := by
+  intro k hk
+  convert mul_zero (g k)
+  exact hf k hk
+
+theorem isCausal_of_causal_mul {f g : DiscreteSignal} (hf : IsCausal f) : IsCausal (fun k ↦ f k * g k) := by
+  convert isCausal_of_mul_causal (g := g) hf using 2
+  rw[mul_comm]
+
+
+theorem summable_zero_of_causal {f : DiscreteSignal} (hf : IsCausal f) :
+    Summable (fun k : NegInt ↦ f k) := by
+      convert summable_zero with ⟨k, hk⟩
+      exact hf k hk
+
+theorem hasSum_zero_of_causal {f : DiscreteSignal} (hf : IsCausal f) :
+    HasSum (fun k : NegInt ↦ f k) 0 := by
+      convert hasSum_zero with ⟨k, hk⟩
+      exact hf k hk
+
+theorem indicator_of_IsCausal_mul {f : DiscreteSignal} {g : DiscreteSignal} (hf : IsCausal f) :
+  (fun k : ℤ ↦ f k * g k) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * g k) k) := by
+    ext k
+
+    by_cases hk : k < 0
+
+    . have : k ∉ NonNegInt := by exact Int.not_le.mpr hk
+      simp only[Set.indicator_of_not_mem this, hf k hk, zero_mul]
+
+    . simp only[Int.not_lt] at hk
+      change k ∈ NonNegInt at hk
+      simp only[Set.indicator_of_mem hk]
+
+theorem indicator_of_mul_IsCausal {f : DiscreteSignal} {g : DiscreteSignal} (hf : IsCausal f) :
+  (fun k : ℤ ↦ g k * f k) = fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ g k * f k) k := by
+    convert indicator_of_IsCausal_mul hf (g := g) using 2
+    <;> simp[mul_comm]
