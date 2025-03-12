@@ -139,7 +139,7 @@ Each of these three files plays a vital role in establishing a solid foundation 
 
 -/
 
-import EE546ECGNFP.Defs -- Useful definitions for implementing engineering Z-transforms
+import EE546ECGNFP.Defs -- Useful mathematical definitions
 import EE546ECGNFP.Signal -- USeful examining the signal properties
 import EE546ECGNFP.ZTransformProperties -- Useful properties for implementing engineering Z-transforms
 
@@ -157,27 +157,6 @@ In this section, we define and analyze three fundamental discrete-time signals: 
 
 
 
-
-/-We now attempt to prove one of the fundamental Z-transform relationships:
-
-The Z-transform of a shifted unit impulse function \( \delta(k - k_0) \) is given by:
-$
-\mathcal{Z} \{ \delta(k - k_0) \} = z^{-k_0}
-$
--/
-
-
-
-
-
-/-
-we now expand the defiriniton of all unit step function to include non-negative, positive (these have to be shown to be equivalent) and negtive indices. We do this to force coercion for lean 4
--/
-
-
-
-
-
 /-In this sub-section, we provide a detailed explanation of several key theorems related to the unit step function `unit_step` (aliased as `u`). These theorems establish fundamental properties such as causality and summability, and they show how multiplication by the unit step function affects discrete-time signals. Specifically, we establish that multiplying a signal by \( u(k) \) enforces causality and preserves summability.
 
 We formalize these properties in Lean so that the **causal nature of our signals has specific implications in the Z-transform**. By encoding these results, we ensure that Lean can automatically reason about causality in **Z-transform proofs**, particularly when proving properties like the **region of convergence (ROC)** and **linearity of summation**.
@@ -186,130 +165,6 @@ These causal properties allow us to **exploit simplifications** in proofs, ensur
 
 
 
-
-
-theorem ZTUnilateral_hasSum_equiv {z : ℂ} {a : ℂ} (x : DiscreteSignal) :
-  HasSum (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) a ↔
-  HasSum (fun k : NonNegInt ↦ x k * z ^ (-k : ℤ)) a := by
-    exact Equiv.hasSum_iff nonNegInt_nat_equiv.symm (a := a) (
-      f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
-
-/- This theorem ensures that we can switch between summing over ℕ and summing over NonNegInt, a more structured subset of  ℤ. This transition is useful for formalizing summation equivalences in Lean-/
-
-theorem ZTUnilateral_summable_equiv{z : ℂ} (x : DiscreteSignal) :
-  Summable (fun n : ℕ ↦ x n * z ^ (-n : ℤ)) ↔
-  Summable (fun k : NonNegInt ↦ x k * z ^ (-k : ℤ)) := by
-    exact Equiv.summable_iff nonNegInt_nat_equiv.symm (
-      f := fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ))
-
-/-This theorem ensures that summability properties hold when switching between standard natural number summations and structured integer sets-/
-
-theorem ZTUnilateral_tsum_equiv {z : ℂ} (x : DiscreteSignal) :
-  (ZTransformUnilateral x) z = (ZTransformUnilateral' x) z := by
-    exact Equiv.tsum_eq nonNegInt_nat_equiv.symm (
-      fun (k : NonNegInt) ↦ x k * z ^ (-k : ℤ)
-    )
-
-theorem indicator_one_mul {α β : Type*} [Semiring β] {A : Set α} (a : α) (f : α → β) :
-    A.indicator 1 a * f a = A.indicator (fun a' ↦ f a') a := by
-      by_cases ha : a ∈ A
-      <;> simp[ha]
-
-theorem zt_summable_causal {z : ℂ} {f : DiscreteSignal} :
-    (hf : IsCausal f) →
-    Summable (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) ↔
-    Summable (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) := by
-      intro hf
-      apply Iff.intro
-      . intro hmp
-        simp only[ZTUnilateral_summable_equiv]
-        rw[indicator_of_IsCausal_mul hf] at hmp
-        exact (summable_subtype_iff_indicator).mpr hmp
-
-      . intro hmpr
-        simp only[←summable_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))]
-        convert Summable.add_compl (s := NegInt) (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ)) ?_ ?_
-
-        . exact summable_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))
-
-        . change Summable (fun k : NegInt ↦ f k * z ^ (-k : ℤ))
-          refine summable_zero_of_causal (f := fun k ↦ f k * z ^ (-k : ℤ)) ?_
-          exact isCausal_of_causal_mul hf
-
-        . change Summable (fun k : ↑NegIntᶜ ↦ f k * z ^ (-k : ℤ))
-          rw[NegIntComp]
-          simp only[←ZTUnilateral_summable_equiv]
-          exact hmpr
-
-/-This theorem shows that if a signal is causal, we can restrict summation to non-negative indices. It justifies the transition from bilateral to unilateral Z-transforms.-/
-
-
-theorem zt_sum_causal {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
-    (hf : IsCausal f) →
-    HasSum (fun (k : ℤ) ↦ f k * z ^ (-k : ℤ)) S ↔
-    HasSum (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) S := by
-      intro hf
-      apply Iff.intro
-      . intro hmp
-        simp only[ZTUnilateral_hasSum_equiv]
-        rw[indicator_of_IsCausal_mul hf] at hmp
-        exact (hasSum_subtype_iff_indicator).mpr hmp
-
-      . intro hmpr
-        simp only[←hasSum_univ (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ))]
-        rw[←neg_nonneg_union]
-        convert HasSum.add_disjoint (a := 0) (b := S) (f := fun k : ℤ ↦ f k * z ^ (-k : ℤ)) int_neg_nonneg_disjoint ?_ ?_
-
-        . rw[zero_add]
-
-        . change HasSum (fun k : NegInt ↦ f k * z ^ (-k : ℤ)) 0
-          refine hasSum_zero_of_causal (f := fun k ↦ f k * z ^ (-k : ℤ)) ?_
-          exact isCausal_of_causal_mul hf
-
-        . change HasSum (fun k : NonNegInt ↦ f k * z ^ (-k : ℤ)) S
-          simp only[←ZTUnilateral_hasSum_equiv]
-          exact hmpr
-
-
-theorem zt_sum_unit_step {z : ℂ} {f : DiscreteSignal} {S : ℂ} :
-    HasSum (fun (k : ℤ) ↦ u k * f k * z ^ (-k : ℤ)) S ↔
-    HasSum (fun (n : ℕ) ↦ f n * z ^ (-n : ℤ)) S := by
-
-      convert zt_sum_causal (causal_of_unit_step_mul f) with n
-      simp[u]
-
-
-/-The preceding sub-theorems systematically reduce summation complexity and enforce causality in formal Z-transform proofs. They ensure that we only consider non-negative indices, enabling a rigorous transition from bilateral to unilateral Z-transforms. With all that done, we can finaly prove the unit step Z-transformation -/
-
-theorem zt_unit_step {z : ℂ} (h_roc : ‖z‖ > 1) : HasZTransform u (fun z ↦ (1 / (1 - z⁻¹))) z := by
-  rw[HasZTransform]
-
-  suffices ∀ k, u k * z ^ (-k) = u k * 1 * z ^ (-k) by
-    simp only [this]
-
-    refine' zt_sum_unit_step.mpr _
-    simp
-    simp only[←inv_pow]
-
-    refine' hasSum_geometric_of_norm_lt_one _
-    rw[norm_inv, inv_lt_comm₀] <;> linarith
-
-  simp
-
-
-
-
-
-theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Complex.exp (j * ω))) = 𝓕_d x := by
-  intro x
-  ext ω
-  simp
-  apply tsum_congr
-  intro k
-  calc
-    x k * (Complex.exp (j * ↑ω) ^ k)⁻¹
-      = x k * (Complex.exp (j * ↑ω * ↑k))⁻¹ := by rw [← Complex.exp_int_mul (j * ↑ω) k]; ring_nf
-    _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
 
 
 /-
