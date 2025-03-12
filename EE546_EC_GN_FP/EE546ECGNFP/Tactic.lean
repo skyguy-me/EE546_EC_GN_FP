@@ -18,6 +18,8 @@ import Mathlib.Tactic
 
 open Lean Elab Tactic
 
+set_option maxHeartbeats 10000000
+
 partial def countAdditions (expr : Expr) : Nat :=
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[_, _, _, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
@@ -60,79 +62,87 @@ elab "test_mvars" : tactic => do
   let mvars ← collectMVars target
   --logInfo m!"Metavariables in goal: {mvars}"
 
-/--
-Check if an expression e depends on a free variable with name n.
--/
-partial def dependsOn (e : Expr) (n : Name) : Bool :=
-  go e
-where
-  go (e : Expr) : Bool :=
-    match e with
-    | .fvar fvarId => fvarId.name == n
-    | .forallE _ d b _ | .lam _ d b _ =>
-      go d || go b
-    | .letE _ t v b _ =>
-      go t || go v || go b
-    | .app f a =>
-      go f || go a
-    | .mdata _ e => go e
-    | .proj _ _ e => go e
-    | _ => false
 
 
-/-- Example usage. -/
+def getFVarIdFromName! (name : Name) : MetaM FVarId := do
+  -- Get the local context
+  let lctx ← getLCtx
+  -- Find the local declaration with the given name
+  let decl? := lctx.findFromUserName? name
+  -- Return the FVarId of the declaration, or throw an error if it doesn't exist
+  match decl? with
+  | some decl => return decl.fvarId
+  | none => throwError m!"No local variable with name '{name}' found in the local context"
+
+-- Turn a list of expressions into a chain of HMul.hMul applications
+def reduceHMul (exprs : List Expr) : MetaM Expr := do
+  if exprs.isEmpty then
+    throwError "Cannot create a chain from an empty list"
+  else
+    let mut result := exprs.head!
+    for expr in exprs.tail! do
+      result ← Meta.mkAppM ``HMul.hMul #[result, expr]
+    return result
+
+-- Helper function to collect independent terms
+partial def collectIndependent(e : Expr) : MetaM (List Expr × List Expr) := do
+  match e.getAppFnArgs with
+  | (``HMul.hMul, #[α, β, γ, instHMul, mull, mulr]) | (``Mul.mul, #[_, instMul, mull, mulr]) =>
+    -- Check if the left and right operands depend on `fvarid`
+    -- Recursively collect independent terms from the left and right operands
+    let (lhsDependent, lhsIndependent) ← collectIndependent mulr
+    let (rhsDependent, rhsIndependent) ← collectIndependent mull
+
+    -- Combine results
+    let dependentTerms := lhsDependent ++ rhsDependent
+    let independentTerms := lhsIndependent ++ rhsIndependent
+
+    return (dependentTerms, independentTerms)
+  | _ =>
+    let dep := e.hasLooseBVars
+    return (if dep then [e] else [], if dep then [] else [e])
+
+-- Main function
+def factor_independent_left (β : Expr) (f : Expr)  : TacticM Unit := do
+  let .lam var α body binderInfo := f | throwError "Expected a lambda expression"
+
+  -- Collect dependent and independent terms
+  let (dependentTerms, independentTerms) ← collectIndependent body
+  -- Log the results
+  --logInfo m!"{body} => Dependent terms: {dependentTerms}, Independent terms: {independentTerms}"
+
+  if !independentTerms.isEmpty then
+    let deps ← reduceHMul dependentTerms
+    let indeps ← reduceHMul independentTerms
+    let factored_body ← Meta.mkAppM ``HMul.hMul #[indeps, deps]
+
+    let indepsSyn ← indeps.toSyntax
+
+    let factored_f := Lean.Expr.lam `n α factored_body binderInfo
+    let factored_fSyn ← factored_f.toSyntax
+    let f_syn ← f.toSyntax
+
+    let f_dependent := Lean.Expr.lam `n α deps binderInfo
+    let f_dependentSyn ← f_dependent.toSyntax
+
+    Lean.Elab.Tactic.evalTactic (←`(tactic| try have : $f_syn = $factored_fSyn := by ext; ring_nf))
+    Lean.Elab.Tactic.evalTactic (←`(tactic| try simp only[this]))
+    Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
 
 
-def mkFVarId (n : Name) : FVarId :=
-  { name := n }
-
-def exprWithN : Expr :=
-  mkApp (mkConst `f) (mkFVar (mkFVarId `n))
-
-def exampleExprFixed : Expr :=
-  mkForall `x BinderInfo.default (mkSort levelZero) (mkApp (mkConst `f) (mkConst `g))
-
-#eval dependsOn exprWithN `n -- false
-
-
-partial def reduceMultiplicationsLeft (α' β' expr : Expr) : TacticM Unit := do
-    match expr.getAppFnArgs with
-    | (``HMul.hMul, #[α, β, γ, instHMul, mull, mulr]) | (``Mul.mul, #[_, instAdd, mull, mulr]) =>
-      sorry
-    | _ => return
-
-def factor_left (f : Expr) : TacticM Unit := do
-  let .lam var α body binderInfo := f | throwError "asdf"
-
-  --let (dependentTerms, independentTerms) :=
-    --match body.getAppFnArgs with
-    --| (``HMul.hMul, #[α, β, γ, instHMul, mull, mulr]) | (``Mul.mul, #[_, instMul, mull, mulr]) =>
-      --let lhsDep := dependsOn mull var
-      --let rhsDep := dependsOn mulr var
-
-      --if lhsDep && rhsDep then
-         --Both terms depend on the variable; no factoring possible
-        --return ([body], [])
-      --else if lhsDep then
-         --`lhs` depends on `var`, `rhs` is independent
-        --return ([mull], [mulr])
-      --else if rhsDep then
-         --`rhs` depends on `var`, `lhs` is independent
-        --return ([mull], [mulr])
-      --else
-         --Neither term depends on `var`; treat as independent
-        --return ([], [mull, mulr])
-    --| _ =>
-       --Not a multiplication; treat as dependent
-      --return ([body], [])
+    let a₁ ← Meta.mkFreshExprMVar β
+    let a₁Syn ← a₁.toSyntax
+    Lean.Elab.Tactic.evalTactic (←`(tactic|
+      convert HasSum.mul_left (f := $f_dependentSyn) (a₁ := $a₁Syn) $indepsSyn ?_ using 1))
+    Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
 
 partial def generateSum {α : Expr} (n : Nat) : MetaM Expr := do
   -- Base case: if n = 1, return ?S1
   if n == 1 then
-    Lean.Meta.mkFreshExprMVar α (userName := `S1)
+    Lean.Meta.mkFreshExprMVar α (kind := MetavarKind.synthetic)
   else
     -- Recursive case: generate ?S1 + ?S2 + ... + ?Sn
-    let Sn ← Meta.mkFreshExprMVar α (userName := (s!"S{n}").toName)
+    let Sn ← Meta.mkFreshExprMVar α
     let prevSum ← @generateSum α (n - 1)
     Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn]
 
@@ -156,7 +166,7 @@ partial def splitAdditions (α' β' expr : Expr) (n : Nat) : TacticM Unit := do
           Lean.Elab.Tactic.evalTactic (←
           `(tactic| try refine HasSum.add (f := $flSyn) (g := $frSyn) (a := ?_) (b := $SnSyn) ?_ ?$hSnIdent))
 
-          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+          factor_independent_left α' fr
 
         else
           let S1 ← Lean.Meta.mkFreshExprMVar α' (userName := s!"sum_simp_term_1".toName)
@@ -167,6 +177,11 @@ partial def splitAdditions (α' β' expr : Expr) (n : Nat) : TacticM Unit := do
 
           Lean.Elab.Tactic.evalTactic (←
           `(tactic| try refine HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp1 ?sum_simp_2))
+
+          factor_independent_left α' fl
+          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+          factor_independent_left α' fr
+          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
         splitAdditions α' β' addl (n - 1)
     | _ => return
@@ -182,15 +197,20 @@ elab "sum_simp" : tactic => do
     match f with
     | .lam _ _ body _ =>
       let numAdditions := countAdditions body
+      --logInfo m!"{←Lean.Meta.inferType a}"
 
       if numAdditions = 0 then
+        factor_independent_left α f
         return
+
+      let eq_a ← Meta.mkEq a (← @generateSum α (numAdditions))
+      let eq_a_syn ← eq_a.toSyntax
+      Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn := ?_))
 
       match body.getAppFnArgs with
         | (``HAdd.hAdd, #[α', β', γ, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
           let fl := Lean.Expr.lam `n β addl BinderInfo.default
           let fr := Lean.Expr.lam `n β addr BinderInfo.default
-
           let flSyn ← Lean.Expr.toSyntax fl
           let frSyn ← Lean.Expr.toSyntax fr
 
@@ -203,25 +223,28 @@ elab "sum_simp" : tactic => do
 
             Lean.Elab.Tactic.evalTactic (←
             `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp1 ?sum_simp_2))
+            factor_independent_left α fl
+            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
 
-            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right 2))
+            factor_independent_left α fr
+            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
           else
             let hSnIdent := mkIdent s!"sum_simp_{numAdditions + 1}".toName
             let Sn ← Lean.Meta.mkFreshExprMVar α (userName := s!"sum_simp_term_{numAdditions + 1}".toName)
             let SnSyn ← Sn.toSyntax
 
             Lean.Elab.Tactic.evalTactic (←`(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (b := $SnSyn) ?_ ?$hSnIdent))
-            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right 2))
+            factor_independent_left α fr
 
             splitAdditions α β addl (numAdditions - 1)
         | _ => return
-      Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try simp only[←hasSum_trivial_comp] ))
+      --Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try simp only[←hasSum_trivial_comp] ))
       Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try assumption))
+      Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try clear * -))
 
       Lean.Elab.Tactic.evalTactic (← `(tactic| rotate_right))
       Lean.Elab.Tactic.evalTactic (← `(tactic| try linarith))
       Lean.Elab.Tactic.evalTactic (← `(tactic| rotate_left))
-      --Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try linarith))
     | _ => throwError "2: Goal type is not of the form `HasSum f S`"
   | _ => throwError "Goal type is not of the form `HasSum f S`"
 
@@ -229,7 +252,7 @@ elab "sum_simp" : tactic => do
 example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   {f1 f2 f3 f4 : ℕ → ℝ}
   (hf1 : HasSum f1 1) (hf2 : HasSum f2 3) (hf3 : HasSum f3 0) (hf4 : HasSum f4 (-2)) :
-  HasSum (fun n => f1 n + f2 n + f3 n + f4 n) 2 := by
+  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + f4 n) 9 := by
     sum_simp
 
 
@@ -246,23 +269,17 @@ example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   all_goals clear * -
   all_goals sorry
 
-  --all_goals try assumption
-
-example : HasSum (fun (n : ℕ) => 2 * (1/2 : ℝ)^n + 2 * (1/3 : ℝ)^n) (7 : ℝ) := by
+example : HasSum (fun (n : ℕ) => 2 * (1/2 : ℝ)^n * 3 * 4 * 5 + 2 * (1/3 : ℝ)^n * 5)
+  (255 : ℝ) := by
+  ring_nf
   sum_simp
-  try
-  . refine (hasSum_mul_left_iff (a₁ := ?_) (f := fun (n : ℕ) ↦ (1/2 : ℝ)^n) ?_).mpr ?_
-    rotate_left
-    . exact Ne.symm (NeZero.ne' 2)
-    . refine hasSum_geometric_of_abs_lt_one (r := (1/2 : ℝ)) ?_
-      rw[abs_of_nonneg]
-      <;> linarith
 
-  . convert (hasSum_mul_left_iff (a₁ := ?_) (a₂ := 2) (f := fun n ↦  (1/3 : ℝ)^n) ?_).mpr ?_
-    rotate_left
-    . exact Ne.symm (NeZero.ne' 2)
-    . refine hasSum_geometric_of_abs_lt_one (r := (1/3 : ℝ)) ?_
-      rw[abs_of_nonneg]
-      <;> linarith
+  . refine hasSum_geometric_of_abs_lt_one (r := (1/3 : ℝ)) ?_
+    rw[abs_of_nonneg]
+    <;> linarith
+
+  . refine hasSum_geometric_of_abs_lt_one (r := (1/2 : ℝ)) ?_
+    rw[abs_of_nonneg]
+    <;> linarith
 
   . linarith
