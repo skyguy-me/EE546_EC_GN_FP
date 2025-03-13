@@ -1,0 +1,28 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Implementing Z-transforms in Lean4
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Ember
+    family-names: Chow
+    email: emmychow@uw.edu
+    affiliation: University of Washington
+  - given-names: Gokul
+    family-names: Nathan
+    email: gokuln@uw.edu
+    affiliation: University of Washington
+    orcid: 'https://orcid.org/0000-0002-2716-2443'
+repository-code: 'https://github.com/skyguy-me/EE546_EC_GN_FP'
+abstract: >-
+  The rapid advancement of AI and ML in control systems
+  necessitates interpretable, generalizable, and certifiable
+  models for safety-critical applications.  This repository
+  encodes a standard Z-transform table into Lean4 to address
+  the lack of support for Z-transform analysis in existing
+  formal verification tools.  
+license: GPL-3.0-or-later
