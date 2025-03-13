@@ -280,6 +280,18 @@ theorem zt_FinalValueTheorem
 --     sorry
 
 
+
+-- EMMY I want an example here showing how the property can be used in a actual simplification proof. --
+
+
+
+
+
+
+
+
+
+
 /-
 ## Limitations and Future Work
 While this project successfully formalizes key properties of the Z-transform, several limitations remain, providing opportunities for future extensions. First, developing a formal proof of the inverse Z-transform remains an open challenge. While the direct Z-transform is well-structured and provable within Lean’s framework, the inverse transform involves contour integration techniques and residue calculus, which are not yet fully formalized in Lean’s mathematical libraries.
