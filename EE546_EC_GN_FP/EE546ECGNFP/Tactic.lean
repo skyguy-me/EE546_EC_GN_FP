@@ -118,24 +118,20 @@ partial def collectIndependent(e : Expr) : MetaM (List Expr × List Expr) := do
     let dep := e.hasLooseBVars
     return (if dep then [e] else [], if dep then [] else [e])
 
-partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr)) := do
+partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr) × List (List Expr)) := do
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[_, _, _, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
-      let (n, indeps) ← countAndCollect addl
-      let (_, indepl) ← collectIndependent addr
-      return (n + 1, indeps ++ [indepl])
+      let (n, deps, indeps) ← countAndCollect addl
+      let (depl, indepl) ← collectIndependent addr
+      return (n + 1, deps ++ [depl] , indeps ++ [indepl])
     | _ =>
-      let (_, indepl) ← collectIndependent expr
-      return ((0 : ℕ), [indepl])
+      let (dep, indep) ← collectIndependent expr
+      return ((0 : ℕ), [dep], [indep])
 
--- Main function
 def factor_independent_left (β : Expr) (f : Expr)  : TacticM Unit := do
   let .lam var α body binderInfo := f | throwError "Expected a lambda expression"
 
-  -- Collect dependent and independent terms
   let (dependentTerms, independentTerms) ← collectIndependent body
-  -- Log the results
-  logInfo m!"{body} => Dependent terms: {dependentTerms}, Independent terms: {independentTerms}"
 
   if !independentTerms.isEmpty then
     let deps ← reduceHMul dependentTerms
@@ -162,6 +158,34 @@ def factor_independent_left (β : Expr) (f : Expr)  : TacticM Unit := do
       convert HasSum.mul_left (f := $f_dependentSyn) (a₁ := $a₁Syn) $indepsSyn ?_ using 1))
     Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
 
+
+def factor_independent_left2 (f : Expr) (dependentTerms : List Expr) (independentTerms : List Expr) (target : Expr)  : TacticM Unit := do
+  let .lam var α body binderInfo := f | throwError "Expected a lambda expression"
+
+  if !independentTerms.isEmpty then
+    let depsMul ← reduceHMul dependentTerms
+    let indepsMul ← reduceHMul independentTerms
+    let factored_body ← Meta.mkAppM ``HMul.hMul #[indepsMul, depsMul]
+
+    let factored_f := Lean.Expr.lam var α factored_body binderInfo
+    let factored_fSyn ← factored_f.toSyntax
+    let f_syn ← f.toSyntax
+
+    let f_dependent := Lean.Expr.lam var α depsMul binderInfo
+    let f_dependentSyn ← f_dependent.toSyntax
+
+    Lean.Elab.Tactic.evalTactic (←`(tactic| try have : $f_syn = $factored_fSyn := by ext; ring_nf))
+    Lean.Elab.Tactic.evalTactic (←`(tactic| try simp only[this]))
+    Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
+
+    let indepsMulSyn ← indepsMul.toSyntax
+    let targetSyn ← target.toSyntax
+
+    Lean.Elab.Tactic.evalTactic (←`(tactic|
+      refine HasSum.mul_left (f := $f_dependentSyn) (a₁ := $targetSyn) $indepsMulSyn ?_))
+    Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
+
+
 partial def generateSum {α : Expr} (n : Nat) : MetaM Expr := do
   -- Base case: if n = 1, return ?S1
   if n == 1 then
@@ -172,25 +196,28 @@ partial def generateSum {α : Expr} (n : Nat) : MetaM Expr := do
     let prevSum ← @generateSum α (n - 1)
     Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn]
 
-partial def generateSum2 {α : Expr} (n : Nat) (indeps : List (List Expr)) : MetaM Expr := do
+partial def generateSum2 {α : Expr} (n : Nat) (indeps : List (List Expr)) : MetaM (Expr × List Expr × List Expr) := do
   -- Base case: if n = 1, return ?S1
   if n == 1 then
 
-    let Sn ← Lean.Meta.mkFreshExprMVar α (userName := s!"S{n}".toName) (kind := MetavarKind.synthetic)
+    let Sn ← Lean.Meta.mkFreshExprMVar α (userName := s!"S{n}".toName) (kind := MetavarKind.syntheticOpaque)
     if !indeps.head!.isEmpty then
-      Meta.mkAppM ``HMul.hMul #[←reduceHMul indeps.head!, Sn]
+      let Sn_mul ← Meta.mkAppM ``HMul.hMul #[←reduceHMul indeps.head!, Sn]
+      return (Sn_mul, [Sn_mul], [Sn])
     else
-      return Sn
+      return (Sn, [Sn], [Sn])
   else
-    let prevSum ← @generateSum2 α (n - 1) indeps.tail!
+    let (prevSum, snMulList, snList) ← @generateSum2 α (n - 1) indeps.tail!
     -- Recursive case: generate ?S1 + ?S2 + ... + ?Sn
-    let Sn ← Meta.mkFreshExprMVar (userName := s!"S{n}".toName) α (kind := MetavarKind.synthetic)
+    let Sn ← Meta.mkFreshExprMVar (userName := s!"S{n}".toName) α (kind := MetavarKind.syntheticOpaque)
 
     if !indeps.head!.isEmpty then
       let Sn_mul ← Meta.mkAppM ``HMul.hMul #[←reduceHMul indeps.head!, Sn]
-      Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn_mul]
+      return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn_mul], snMulList ++ [Sn_mul], snList ++ [Sn])
     else
-      Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn]
+      return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn],  snMulList ++ [Sn], snList ++ [Sn])
+
+
 
 
 partial def splitAdditions (α' β' expr : Expr) (n : Nat) : TacticM Unit := do
@@ -243,20 +270,18 @@ elab "sum_simp" : tactic => do
     match f with
     | .lam _ _ body _ =>
       let numAdditions := countAdditions body
-      let (n, indeps) ← countAndCollect body
-      logInfo m!"{(←countAndCollect body)}"
-      --logInfo m!"{←Lean.Meta.inferType a}"
+      let (n, depsList, indepsList) ← countAndCollect body
 
       if numAdditions = 0 then
-        factor_independent_left α f
+        factor_independent_left2 f depsList[0]! indepsList[0]! (←Meta.mkFreshExprMVar β (kind := MetavarKind.syntheticOpaque))
         return
 
       let eq_a ← Meta.mkEq a (← @generateSum α (numAdditions + 1))
-      let eq_a2 ← Meta.mkEq a (← @generateSum2 α (n + 1) indeps)
-      logInfo eq_a2
+      let (sum, mulTerms, expVars) ← @generateSum2 α (n + 1) indepsList.reverse
+      let eq_a2 ← Meta.mkEq a (sum)
       let eq_a_syn ← eq_a.toSyntax
-      logInfo eq_a
-      Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn := ?_))
+      let eq_a_syn2 ← eq_a2.toSyntax
+      Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn2 := ?_))
 
       match body.getAppFnArgs with
         | (``HAdd.hAdd, #[α', β', γ, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
@@ -266,19 +291,17 @@ elab "sum_simp" : tactic => do
           let frSyn ← Lean.Expr.toSyntax fr
 
           if numAdditions = 1 then
-            let S1 ← Lean.Meta.mkFreshExprMVar α (userName := s!"sum_simp_term_1".toName)
-            let S2 ← Lean.Meta.mkFreshExprMVar α (userName := s!"sum_simp_term_2".toName)
-
-            let S1Syn ← S1.toSyntax
-            let S2Syn ← S2.toSyntax
+            let S1Syn ← mulTerms[0]!.toSyntax
+            let S2Syn ← mulTerms[1]!.toSyntax
 
             Lean.Elab.Tactic.evalTactic (←
             `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp1 ?sum_simp_2))
-            factor_independent_left α fl
-            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
 
-            factor_independent_left α fr
+            factor_independent_left2 fl depsList[0]! indepsList[0]! expVars[0]!            --Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+            factor_independent_left2 fr depsList[1]! indepsList[1]! expVars[1]!            --Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
+
           else
             let hSnIdent := mkIdent s!"sum_simp_{numAdditions + 1}".toName
             let Sn ← Lean.Meta.mkFreshExprMVar α (userName := s!"sum_simp_term_{numAdditions + 1}".toName)
@@ -320,16 +343,15 @@ example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   all_goals clear * -
   all_goals sorry
 
-example : HasSum (fun (n : ℕ) => 2 * (1/2 : ℝ)^n * 3 * 4 * 5 + 2 * (1/3 : ℝ)^n * 5)
-  (255 : ℝ) := by
-  ring_nf
+example (A B : ℝ) : HasSum (fun (n : ℕ) => 2 * A * (1/2 : ℝ)^n * 3 * 4 * 5 + 2 * (1/3 : ℝ)^n * 5 * B)
+  (240 * A + 15 * B : ℝ) := by
   sum_simp
 
-  . refine hasSum_geometric_of_abs_lt_one (r := (1/3 : ℝ)) ?_
+  . refine hasSum_geometric_of_abs_lt_one (r := (1/2 : ℝ)) ?_
     rw[abs_of_nonneg]
     <;> linarith
 
-  . refine hasSum_geometric_of_abs_lt_one (r := (1/2 : ℝ)) ?_
+  . refine hasSum_geometric_of_abs_lt_one (r := (1/3 : ℝ)) ?_
     rw[abs_of_nonneg]
     <;> linarith
 
