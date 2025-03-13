@@ -1,0 +1,163 @@
+digraph DependencyTree {
+    rankdir=TB; // Top-to-bottom layout
+    node [shape=box];
+
+    // Define nodes
+    Defs [label="Defs.lean"];
+    Signal [label="Signal.lean"];
+    Tactic [label="Tactic.lean"];
+    ZTransformProperties [label="ZTransformProperties.lean"];
+    ZTransform [label="ZTransform.lean"];
+
+    Lean [label="Lean"];
+    Lean_Elab [label="Lean.Elab"];
+    Lean_Elab_Tactic [label="Lean.Elab.Tactic"];
+
+    Lean -> Lean_Elab;
+    Lean_Elab -> Lean_Elab_Tactic;
+
+    Mathlib [label="Mathlib"];
+    Mathlib_Tactic [label="Mathlib.Tactic"];
+
+    Mathlib -> Mathlib_Tactic;
+
+    Init_Data [label="Init.Data"];
+    Init_Data_Int [label="Init.Data.Int"];
+    Init_Data_Int_Basic [label="Init.Data.Int.Basic"];
+
+    Init -> Init_Data;
+    Init_Data -> Init_Data_Int;
+    Init_Data_Int -> Init_Data_Int_Basic;
+
+    Mathlib_Algebra [label="Mathlib.Algebra"];
+    Mathlib_Algebra_Group [label="Mathlib.Algebra.Group"];
+    Mathlib_Algebra_Group_Indicator [label="Mathlib.Algebra.Group.Indicator"];
+
+    Mathlib -> Mathlib_Algebra;
+    Mathlib_Algebra -> Mathlib_Algebra_Group;
+    Mathlib_Algebra_Group -> Mathlib_Algebra_Group_Indicator;
+
+
+    Mathlib_Data [label="Mathlib.Data"];
+    Mathlib_Data_Set [label="Mathlib.Data.Set"];
+    Mathlib_Data_Set_Basic [label="Mathlib.Data.Set.Basic"];
+
+    Mathlib -> Mathlib_Data;
+    Mathlib_Data -> Mathlib_Data_Set;
+    Mathlib_Data_Set -> Mathlib_Data_Set_Basic;
+
+
+    Mathlib_Data_Real [label="Mathlib.Data.Real"];
+    Mathlib_Data_Real_Basic [label="Mathlib.Data.Real.Basic"];
+
+    Mathlib_Data -> Mathlib_Data_Real;
+    Mathlib_Data_Real -> Mathlib_Data_Real_Basic;
+
+    Mathlib_Data_Complex [label="Mathlib.Data.Complex"];
+    Mathlib_Data_Complex_Basic [label="Mathlib.Data.Complex.Basic"];
+    Mathlib_Data_Complex_Exponential [label="Mathlib.Data.Complex.Exponential"];
+    Mathlib_Data_Complex_Norm [label="Mathlib.Data.Complex.Norm"];
+
+    Mathlib_Data -> Mathlib_Data_Complex;
+    Mathlib_Data_Complex -> Mathlib_Data_Complex_Basic;
+    Mathlib_Data_Complex -> Mathlib_Data_Complex_Exponential;
+    Mathlib_Data_Complex -> Mathlib_Data_Complex_Norm;
+
+
+    Mathlib_Tactic [label="Mathlib.Tactic"];
+    Mathlib_Tactic_Linarith [label="Mathlib.Tactic.Linarith"];
+
+    Mathlib -> Mathlib_Tactic;
+    Mathlib_Tactic -> Mathlib_Tactic_Linarith;
+
+    Mathlib_Topology [label="Mathlib.Topology"];
+    Mathlib_Topology_Basic [label="Mathlib.Topology.Basic"];
+    Mathlib_Topology_Filter [label="Mathlib.Topology.Filter"];
+
+    Mathlib_Topology_MetricSpace [label="Mathlib.Topology.MetricSpace"];
+    Mathlib_Topology_MetricSpace_Basic [label="Mathlib.Topology.MetricSpace.Basic"];
+
+    Mathlib_Topology_Algebra [label="Mathlib.Topology.Algebra"];
+    Mathlib_Topology_Algebra_InfiniteSum [label="Mathlib.Topology.Algebra.InfinieSum"];
+    Mathlib_Topology_Algebra_InfiniteSum_Basic [label="Mathlib.Topology.Algebra.InfiniteSum.Basic"];
+    Mathlib_Topology_Algebra_InfiniteSum_Defs [label="Mathlib.Topology.Algebra.InfiniteSum.Defs"];
+
+
+    Mathlib -> Mathlib_Topology;
+    Mathlib_Topology -> Mathlib_Topology_Basic;
+    Mathlib_Topology -> Mathlib_Topology_Filter;
+    Mathlib_Topology -> Mathlib_Topology_Algebra;
+
+    Mathlib_Topology -> Mathlib_Topology_MetricSpace;
+    Mathlib_Topology_MetricSpace -> Mathlib_Topology_MetricSpace_Basic;
+
+    Mathlib_Topology_Algebra -> Mathlib_Topology_Algebra_InfiniteSum;
+    Mathlib_Topology_Algebra_InfiniteSum -> Mathlib_Topology_Algebra_InfiniteSum_Basic;
+    Mathlib_Topology_Algebra_InfiniteSum -> Mathlib_Topology_Algebra_InfiniteSum_Defs;
+
+    // Signal.lean
+    Mathlib_Analysis [label="Mathlib.Analysis"];
+
+    Mathlib_Analysis_Complex [label="Mathlib.Analysis.Complex"];
+    Mathlib_Analysis_Complex_Basic [label="Mathlib.Analysis.Complex.Basic"];
+
+    Mathlib_Analysis_Normed [label="Mathlib.Analysis.Normed"];
+    Mathlib_Analysis_Normed_Group [label="Mathlib.Analysis.Normed.Group"];
+    Mathlib_Analysis_Normed_Group_Basic [label="Mathlib.Analysis.Normed.Group.Basic"];
+
+    Mathlib_Analysis_SpecificLimits [label="Mathlib.Analysis.SpecificLimits"];
+    Mathlib_Analysis_SpecificLimits_Normed [label="Mathlib.Analysis.SpecificLimits.Normed"];
+
+    Mathlib -> Mathlib_Analysis;
+    Mathlib_Analysis -> Mathlib_Analysis_Complex;
+    Mathlib_Analysis_Complex -> Mathlib_Analysis_Complex_Basic;
+
+    Mathlib_Analysis -> Mathlib_Analysis_Normed;
+    Mathlib_Analysis_Normed -> Mathlib_Analysis_Normed_Group;
+    Mathlib_Analysis_Normed_Group -> Mathlib_Analysis_Normed_Group_Basic;
+
+    Mathlib_Analysis -> Mathlib_Analysis_SpecificLimits;
+    Mathlib_Analysis_SpecificLimits -> Mathlib_Analysis_SpecificLimits_Normed;
+
+
+    // Defs.lean
+    Init_Data_Int_Basic -> Defs;
+    Mathlib_Data_Set_Basic -> Defs;
+    Mathlib_Tactic_Linarith -> Defs;
+    Mathlib_Topology_Basic -> Defs;
+    Mathlib_Topology_Algebra_InfiniteSum_Basic -> Defs;
+    // Signal.lean
+
+    Mathlib_Analysis_Normed_Group_Basic -> Signal;
+    Mathlib_Data_Complex_Basic -> Signal;
+    Mathlib_Data_Complex_Norm -> Signal;
+    Mathlib_Toplogy_Filter -> Signal;
+    Mathlib_Topology_MetricSpace_Basic -> Signal;
+
+    Defs -> Signal;
+    Signal -> ZTransform;
+    ZTransformProperties -> ZTransform;
+
+
+    // Tactic.lean has no dependencies
+    Lean -> Tactic;
+    Lean_Elab_Tactic -> Tactic;
+    Mathlib_Tactic -> Tactic;
+    Tactic;
+
+    // ZTransformProperties.lean
+    Mathlib_Algebra_Group_Indicator -> ZTransformProperties;
+    Mathlib_Analysis_Complex_Basic -> ZTransformProperties;
+    Mathlib_Analysis_SpecificLimits_Normed -> ZTransformProperties;
+
+    Mathlib_Data_Complex_Exponential -> ZTransformProperties;
+    Mathlib_Data_Real_Basic -> ZTransformProperties;
+
+    Mathlib_Topology_Algebra_InfiniteSum_Defs -> ZTransformProperties;
+
+    Signal -> ZTransformProperties;
+    Defs -> ZTransformProperties;
+
+    // ZTransform
+    ZTransformProperties -> ZTransform;
+}
