@@ -221,7 +221,7 @@ theorem unit_impulse_equiv_indicator :
 notation "δ" => unit_impulse
 
 /-
-**2. Unit Step Function (`δ(k)`)**
+**2. Unit Step Function (`u(k)`)**
 The **unit step function**, which reperent causality in discrete time signals is defined as:
 -/
 
