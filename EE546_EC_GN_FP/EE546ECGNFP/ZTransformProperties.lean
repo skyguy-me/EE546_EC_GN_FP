@@ -74,9 +74,27 @@ notation "𝓩" => ZTransform
 notation "𝓩_u" => ZTransformUnilateral
 notation "𝓕_d" => DiscreteTimeFourierTransform
 
+
+
+
+
+
+
+
+
+
+
+
 theorem zt_unit_impulse {z : ℂ} (k₀ : ℤ) : HasZTransform (fun k ↦ δ (k - k₀)) (fun z : ℂ ↦ (z ^ (-k₀))) z := by
   simp[Int.sub_eq_zero]
   convert hasSum_ite_eq k₀ (z ^ k₀)⁻¹
+
+
+
+
+
+
+
 
 
 

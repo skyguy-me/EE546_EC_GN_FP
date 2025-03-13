@@ -78,9 +78,8 @@ import Mathlib.Tactic.Linarith
 
 This project focuses on implementing and exploring the Z-transform, a crucial mathematical tool for analyzing discrete-time signals and systems in the field of signal processing. The Z-transform transforms discrete signals from the time domain into the complex frequency domain, enabling more efficient analysis and manipulation of signals. The Z-transform is defined as:
 
-<center>
-$` \mathcal{Z}\{x[n]\} = X(z) = \sum_{k=-\infty}^{\infty} x[k] z^{-k} `$
-</center>
+
+$$` \mathcal{Z}\{x[n]\} = X(z) = \sum_{k=-\infty}^{\infty} x[k] z^{-k} `$$
 
 Where:
 - $` x[k] `$ is the discrete-time signal,
@@ -110,6 +109,9 @@ This project aims to provide a formal and computational framework for the Z-tran
 Our approach to implementing the Z-transform in Lean 4 follows a top-down methodology, beginning with an in-depth examination of the foundational content available in Mathlib. During this process, we identified a gap in how certain critical aspects of signal processing—specifically the Z-transform—were represented and handled. To address this, we built a structured framework from the ground up, defining core principles and mathematical structures to support the Z-transform and its applications.
 
 The first step in our implementation was defining the Z-transform itself, along with its essential properties. This required an understanding of its mathematical and computational aspects, such as convergence, summability, and the interplay between time and frequency domains. We then defined a representation for discrete sampled signals, as they form the fundamental unit of analysis in signal processing. This process led to a more foundational exploration of key mathematical structures, including sets, monoids, complex numbers, and natural numbers. While Mathlib provided a strong foundation, many of these structures were not readily available in the form needed for signal processing tasks, prompting us to develop them independently while ensuring compatibility with existing Mathlib definitions.
+
+
+INSERT PICTURE HERE of the depedency tree and the mathemical properties.
 
 ## Mathematical Foundations and Implementation
 The implementation of the Z-transform is centered around defining it as an infinite sum over integer indices, mapping a discrete-time function into the complex plane. A key aspect of this formalization is the integration of summability results from fundamental definitions, ensuring that infinite series converge appropriately within the Lean framework. The following core properties, implemented in `ZTransformProperties.lean`, `Signal.lean`, and `Defs.lean`, were rigorously proven:
@@ -202,9 +204,7 @@ theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {
     calc
       f (k + n - n) * z ^ (-(k + n)) = f (k) * z ^ (-(k + n)) := by
         rw[add_sub_cancel_right]
-
       _ = f (k) * z^(-k) * z^(-n) := by rw[neg_add, zpow_add₀ z_neq_zero, mul_assoc]
-
       _ = z^(-n) * (f (k) * z^(-k)) := by rw[mul_comm]
 
 
