@@ -123,7 +123,7 @@ partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr) × Lis
     | (``HAdd.hAdd, #[_, _, _, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
       let (n, deps, indeps) ← countAndCollect addl
       let (depl, indepl) ← collectIndependent addr
-      return (n + 1, deps ++ [depl] , indeps ++ [indepl])
+      return (n + 1, [depl] ++ deps , [indepl] ++ indeps)
     | _ =>
       let (dep, indep) ← collectIndependent expr
       return ((0 : ℕ), [dep], [indep])
@@ -213,14 +213,12 @@ partial def generateSum2 {α : Expr} (n : Nat) (indeps : List (List Expr)) : Met
 
     if !indeps.head!.isEmpty then
       let Sn_mul ← Meta.mkAppM ``HMul.hMul #[←reduceHMul indeps.head!, Sn]
-      return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn_mul], snMulList ++ [Sn_mul], snList ++ [Sn])
+      return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn_mul], [Sn_mul] ++ snMulList, [Sn] ++ snList)
     else
-      return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn],  snMulList ++ [Sn], snList ++ [Sn])
+      return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn], [Sn] ++ snMulList, [Sn] ++ snList)
 
 
-
-
-partial def splitAdditions (α' β' expr : Expr) (n : Nat) : TacticM Unit := do
+partial def splitAdditions  (β' : Expr) (depsList indepsList : List (List Expr)) (mulTermsList expMvarsList : List Expr) (expr : Expr) (n : Nat) : TacticM Unit := do
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[α, β, γ, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
 
@@ -231,32 +229,28 @@ partial def splitAdditions (α' β' expr : Expr) (n : Nat) : TacticM Unit := do
         let frSyn ← Lean.Expr.toSyntax fr
 
         if n > 1 then
-          let hSnIdent := mkIdent s!"sum_simp_{n}".toName
-          let Sn ← Lean.Meta.mkFreshExprMVar α' (userName := s!"sum_simp_term_{n + 1}".toName)
-          let SnSyn ← Sn.toSyntax
+          let hSnIdent := mkIdent s!"sum_simp_{n + 1}".toName
+          let SnSyn ← mulTermsList[0]!.toSyntax
 
+          Lean.Elab.Tactic.evalTactic (←`(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (b := $SnSyn) ?_ ?$hSnIdent))
 
-          Lean.Elab.Tactic.evalTactic (←
-          `(tactic| try refine HasSum.add (f := $flSyn) (g := $frSyn) (a := ?_) (b := $SnSyn) ?_ ?$hSnIdent))
-
-          factor_independent_left α' fr
-
-        else
-          let S1 ← Lean.Meta.mkFreshExprMVar α' (userName := s!"sum_simp_term_1".toName)
-          let S2 ← Lean.Meta.mkFreshExprMVar α' (userName := s!"sum_simp_term_2".toName)
-
-          let S1Syn ← S1.toSyntax
-          let S2Syn ← S2.toSyntax
-
-          Lean.Elab.Tactic.evalTactic (←
-          `(tactic| try refine HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp1 ?sum_simp_2))
-
-          factor_independent_left α' fl
           Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
-          factor_independent_left α' fr
+          factor_independent_left2 fr depsList[0]! indepsList[0]! expMvarsList[0]!
+          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
+        else
+          let S1Syn ← mulTermsList[1]!.toSyntax
+          let S2Syn ← mulTermsList[0]!.toSyntax
+
+          Lean.Elab.Tactic.evalTactic (←
+          `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp_1 ?sum_simp_2))
+
+          factor_independent_left2 fl depsList[1]! indepsList[1]! expMvarsList[1]!
+          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+          factor_independent_left2 fr depsList[0]! indepsList[0]! expMvarsList[0]!
           Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
-        splitAdditions α' β' addl (n - 1)
+
+        splitAdditions β' depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (n - 1)
     | _ => return
 
 
@@ -277,7 +271,7 @@ elab "sum_simp" : tactic => do
         return
 
       let eq_a ← Meta.mkEq a (← @generateSum α (numAdditions + 1))
-      let (sum, mulTerms, expVars) ← @generateSum2 α (n + 1) indepsList.reverse
+      let (sum, mulTermsList, expMvarsList) ← @generateSum2 α (n + 1) indepsList
       let eq_a2 ← Meta.mkEq a (sum)
       let eq_a_syn ← eq_a.toSyntax
       let eq_a_syn2 ← eq_a2.toSyntax
@@ -291,26 +285,28 @@ elab "sum_simp" : tactic => do
           let frSyn ← Lean.Expr.toSyntax fr
 
           if numAdditions = 1 then
-            let S1Syn ← mulTerms[0]!.toSyntax
-            let S2Syn ← mulTerms[1]!.toSyntax
+            let S1Syn ← mulTermsList[1]!.toSyntax
+            let S2Syn ← mulTermsList[0]!.toSyntax
 
             Lean.Elab.Tactic.evalTactic (←
-            `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp1 ?sum_simp_2))
+            `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp_1 ?sum_simp_2))
 
-            factor_independent_left2 fl depsList[0]! indepsList[0]! expVars[0]!            --Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+            factor_independent_left2 fl depsList[1]! indepsList[1]! expMvarsList[1]!
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
-            factor_independent_left2 fr depsList[1]! indepsList[1]! expVars[1]!            --Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+            factor_independent_left2 fr depsList[0]! indepsList[0]! expMvarsList[0]!
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
           else
             let hSnIdent := mkIdent s!"sum_simp_{numAdditions + 1}".toName
-            let Sn ← Lean.Meta.mkFreshExprMVar α (userName := s!"sum_simp_term_{numAdditions + 1}".toName)
-            let SnSyn ← Sn.toSyntax
+            let SnSyn ← mulTermsList[0]!.toSyntax
 
             Lean.Elab.Tactic.evalTactic (←`(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (b := $SnSyn) ?_ ?$hSnIdent))
-            factor_independent_left α fr
 
-            splitAdditions α β addl (numAdditions - 1)
+            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+            factor_independent_left2 fr depsList[0]! indepsList[0]! expMvarsList[0]!
+            Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
+
+            splitAdditions β depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (numAdditions - 1)
         | _ => return
       --Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try simp only[←hasSum_trivial_comp] ))
       Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try assumption))
@@ -326,7 +322,7 @@ elab "sum_simp" : tactic => do
 example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   {f1 f2 f3 f4 : ℕ → ℝ}
   (hf1 : HasSum f1 1) (hf2 : HasSum f2 3) (hf3 : HasSum f3 0) (hf4 : HasSum f4 (-2)) :
-  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + 2 * f4 n) 9 := by
+  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + 2 * f4 n) 7 := by
     sum_simp
 
 
@@ -343,8 +339,8 @@ example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   all_goals clear * -
   all_goals sorry
 
-example (A B : ℝ) : HasSum (fun (n : ℕ) => 2 * A * (1/2 : ℝ)^n * 3 * 4 * 5 + 2 * (1/3 : ℝ)^n * 5 * B)
-  (240 * A + 15 * B : ℝ) := by
+example (A B C : ℝ) : HasSum (fun (n : ℕ) => 2 * C * A * (1/2 : ℝ)^n * 3 * 4 * 5 + 2 * (1/3 : ℝ)^n * 5 * B + 3 * (1/4 : ℝ)^n * A * B^2)
+  (240 * A * C + 15 * B + 4 * A * B^2 : ℝ) := by
   sum_simp
 
   . refine hasSum_geometric_of_abs_lt_one (r := (1/2 : ℝ)) ?_
@@ -352,6 +348,10 @@ example (A B : ℝ) : HasSum (fun (n : ℕ) => 2 * A * (1/2 : ℝ)^n * 3 * 4 * 5
     <;> linarith
 
   . refine hasSum_geometric_of_abs_lt_one (r := (1/3 : ℝ)) ?_
+    rw[abs_of_nonneg]
+    <;> linarith
+
+  . refine hasSum_geometric_of_abs_lt_one (r := (1/4 : ℝ)) ?_
     rw[abs_of_nonneg]
     <;> linarith
 
