@@ -111,7 +111,6 @@ Our approach to implementing the Z-transform in Lean 4 follows a top-down method
 The first step in our implementation was defining the Z-transform itself, along with its essential properties. This required an understanding of its mathematical and computational aspects, such as convergence, summability, and the interplay between time and frequency domains. We then defined a representation for discrete sampled signals, as they form the fundamental unit of analysis in signal processing. This process led to a more foundational exploration of key mathematical structures, including sets, monoids, complex numbers, and natural numbers. While Mathlib provided a strong foundation, many of these structures were not readily available in the form needed for signal processing tasks, prompting us to develop them independently while ensuring compatibility with existing Mathlib definitions.
 
 
-INSERT PICTURE HERE of the depedency tree and the mathemical properties.
 ![Dependency Graph](./assets/deps.svg)
 
 ## Mathematical Foundations and Implementation
@@ -153,7 +152,7 @@ For example to solve:
 
 $`\displaystyle \sum_{k = 0}^{\infty} 2 \left(\frac{1}{2}\right)^n + 3 \left(\frac{1}{3}\right)^n `$
 
-we may decompose the sum into a linear combination of geometric series.
+We may decompose the sum into a linear combination of geometric series.
 
 $`\displaystyle \sum_{k = 0}^{\infty} 2 \left(\frac{1}{2}\right)^n + 3 \left(\frac{1}{3}\right)^n =
 \displaystyle 2\sum_{k = 0}^{\infty} \left(\frac{1}{2}\right)^n +

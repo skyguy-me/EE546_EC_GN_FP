@@ -25,6 +25,9 @@ Winter 2025<br />
 </center>
 <br />
 
+
+The sum simplification tactic decmposes a sum through linearity. In general, many sums can be expressed as linear
+combinations of simpler sums. Decomposing these by hand can be tedious and not scalable for large sums.
 -/
 
 import Lean
@@ -33,13 +36,21 @@ import Mathlib.Tactic
 
 open Lean Elab Tactic
 
-lemma hasSum_trivial_comp {α β : Type*} [AddCommMonoid α] [TopologicalSpace α]
-   (f : β → α) (a : α) : HasSum f a = HasSum (fun x : β ↦ f x) a :=
-  rfl
+/-
+## Utilities
 
-/--
-Turn a list of expressions [expr1, expr2, expr3, ...] into expr1 * expr2 * expr3 * ...
+In order to define the sum simplification tactic, we first write several utilities which will be used by the file.
 -/
+
+/-
+Performs a mulutiplication reducation on a list of expressions, turning `[expr1, expr2, expr3, ...]` into
+`expr1 * expr2 * expr3 * ...`
+
+This is used in factoring expressions out of sums. In the tactic, we collect all constant factors as an array.
+This function reassembles us to reorder the product with all constant
+factors to the left.
+-/
+
 def reduceHMul (exprs : List Expr) : MetaM Expr := do
   if exprs.isEmpty then
     throwError "Cannot create a chain from an empty list"
@@ -49,8 +60,12 @@ def reduceHMul (exprs : List Expr) : MetaM Expr := do
       result ← Meta.mkAppM ``HMul.hMul #[result, expr]
     return result
 
-/--
+/-
+This function takes an expression e which is of the form  and collects all all dependent and
+independent terms. `a * b(n) * c(n) * d ...` gets turned into two lists `[a, d, ...]` and `[b(n), c(n), ...]`
 
+This is used to decompose scaled sums. It works whether or not the scaling happens to the left or right,
+and works for arbitrary numbers of factors.
 -/
 partial def collectIndependent(e : Expr) : MetaM (List Expr × List Expr) := do
   match e.getAppFnArgs with
@@ -69,6 +84,16 @@ partial def collectIndependent(e : Expr) : MetaM (List Expr × List Expr) := do
     let dep := e.hasLooseBVars
     return (if dep then [e] else [], if dep then [] else [e])
 
+/-
+Given an expression that is a sum of products: $`a₁ * b₁(n) * c₁(n) * ... + a₂(n) * b₂(n) * ... + ... `$
+this function simulatneously counts how many additions are in the expression and for each term, seperates out
+independent and dependent terms.
+
+For example:
+
+$`a_1 * b_1(n) * c_1(n) * ... + a_2(n) * b_2(n) * ... + ... a_N(n) * b_N * ...`$ is converted into
+$`\left(N, [[b_N],\ ...,\ [a₁]],\ [[a_N, b_N],\ ...,\ [a_2, b_2],\ [b_1, c_1]]\right)`$
+-/
 partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr) × List (List Expr)) := do
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[_, _, _, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
@@ -79,6 +104,11 @@ partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr) × Lis
       let (dep, indep) ← collectIndependent expr
       return ((0 : ℕ), [dep], [indep])
 
+/-
+Given an expression that is a product in a sum, this will attempt to take out all constant factors.
+
+$`\displaystyle \sum_{k = 0}^\infty a \cdot b \cdot x[k] \cdot c \to abc \sum_{k = 0}^\infty x[k]`$
+-/
 def factor_independent_left (f : Expr) (dependentTerms : List Expr) (independentTerms : List Expr) (target : Expr)  : TacticM Unit := do
   let .lam var α body binderInfo := f | throwError "Expected a lambda expression"
 
@@ -105,6 +135,10 @@ def factor_independent_left (f : Expr) (dependentTerms : List Expr) (independent
       refine HasSum.mul_left (f := $f_dependentSyn) (a₁ := $targetSyn) $indepsMulSyn ?_))
     Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
 
+/-
+Generates a sum with n placeholder variables with constant factors. Returns ths sum expression, a list of the
+placeholders with constant factors out front, and a list of the placeholders.
+-/
 partial def generateSum {α : Expr} (n : Nat) (indeps : List (List Expr)) : MetaM (Expr × List Expr × List Expr) := do
   -- Base case: if n = 1, return ?S1
   if n == 1 then
@@ -127,7 +161,10 @@ partial def generateSum {α : Expr} (n : Nat) (indeps : List (List Expr)) : Meta
       return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn], [Sn] ++ snMulList, [Sn] ++ snList)
 
 
-partial def splitAdditions  (β' : Expr) (depsList indepsList : List (List Expr)) (mulTermsList expMvarsList : List Expr) (expr : Expr) (n : Nat) : TacticM Unit := do
+/-
+Decomposes a sum expression using linearity
+-/
+partial def decomposeSum  (β' : Expr) (depsList indepsList : List (List Expr)) (mulTermsList expMvarsList : List Expr) (expr : Expr) (n : Nat) : TacticM Unit := do
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[α, β, γ, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
 
@@ -159,11 +196,13 @@ partial def splitAdditions  (β' : Expr) (depsList indepsList : List (List Expr)
           Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
 
-        splitAdditions β' depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (n - 1)
+        decomposeSum β' depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (n - 1)
     | _ => return
 
 
--- Recursive tactic to break up a sum using `HasSum.add`
+/-
+Recusrively simplifies a sum expression using linearity.
+-/
 elab "sum_simp" : tactic => do
   let goal ← getMainGoal
   let target ← goal.getType
@@ -212,7 +251,7 @@ elab "sum_simp" : tactic => do
             factor_independent_left fr depsList[0]! indepsList[0]! expMvarsList[0]!
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
-            splitAdditions β depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (numAdditions - 1)
+            decomposeSum β depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (numAdditions - 1)
         | _ => return
       --Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try simp only[←hasSum_trivial_comp] ))
       Lean.Elab.Tactic.evalTactic (← `(tactic| all_goals try assumption))
@@ -224,14 +263,15 @@ elab "sum_simp" : tactic => do
     | _ => throwError "2: Goal type is not of the form `HasSum f S`"
   | _ => throwError "Goal type is not of the form `HasSum f S`"
 
+/-
+### Developing an Intuition for the Tactic
 
-example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
-  {f1 f2 f3 f4 : ℕ → ℝ}
-  (hf1 : HasSum f1 1) (hf2 : HasSum f2 3) (hf3 : HasSum f3 0) (hf4 : HasSum f4 (-2)) :
-  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + 2 * f4 n) 7 := by
-    sum_simp
+In general, we wish to break up a sum using linearity. Below, we have a sum that is the sum of four known
+sums. This decomposition takes four steps since we can only decompose it one at a time.
 
-
+Even this relatively simply example already has a complex proof. If each of these also were multiplied by constant
+factors, this would require 12 steps: 4 to split the addtions, 4 to simplify the products, and 4 to factor the products.
+-/
 example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   {f1 f2 f3 f4 : ℕ → α} {a1 a2 a3 a4 A : α}
   (hf1 : HasSum f1 a1) (hf2 : HasSum f2 a2) (hf3 : HasSum f3 a3) (hf4 : HasSum f4 a4)
@@ -244,6 +284,26 @@ example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   refine HasSum.add (f := f1) (g := f2) (a := ?S1) (b := ?S2) ?hS1 ?hS2
   all_goals clear * -
   all_goals sorry
+
+
+/-
+### Automation with `sum_simp`
+
+`sum_simp` automates each of the steps shown in the previous problem. We sketch out the algorithm roughly as follows
+
+1. Count the number of additions.
+2. For each term in the addition, create lists of constants (independent factors) and dependent factors.
+3. Inform Lean of the form of the goal using placeholders.
+4. Recuisvely decompose.
+5. Try to solve any subgoals using hypothesis in the goal state.
+6. Run linarith to show each of the sub-sums (scaled by their constant factors.)
+-/
+example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
+  {f1 f2 f3 f4 : ℕ → ℝ}
+  (hf1 : HasSum f1 1) (hf2 : HasSum f2 3) (hf3 : HasSum f3 0) (hf4 : HasSum f4 (-2)) :
+  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + 2 * f4 n) 7 := by
+    sum_simp
+
 
 example (A B C : ℝ) : HasSum (fun (n : ℕ) => 2 * C * A * (1/2 : ℝ)^n * 3 * 4 * 5 + 2 * (1/3 : ℝ)^n * 5 * B + 3 * (1/4 : ℝ)^n * A * B^2)
   (240 * A * C + 15 * B + 4 * A * B^2 : ℝ) := by
