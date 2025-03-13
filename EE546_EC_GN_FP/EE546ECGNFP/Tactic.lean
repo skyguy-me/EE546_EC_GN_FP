@@ -263,19 +263,16 @@ elab "sum_simp" : tactic => do
   | (``HasSum, #[α, β, _, _, f, a]) =>
     match f with
     | .lam _ _ body _ =>
-      let numAdditions := countAdditions body
-      let (n, depsList, indepsList) ← countAndCollect body
+      let (numAdditions, depsList, indepsList) ← countAndCollect body
 
       if numAdditions = 0 then
         factor_independent_left2 f depsList[0]! indepsList[0]! (←Meta.mkFreshExprMVar β (kind := MetavarKind.syntheticOpaque))
         return
 
-      let eq_a ← Meta.mkEq a (← @generateSum α (numAdditions + 1))
-      let (sum, mulTermsList, expMvarsList) ← @generateSum2 α (n + 1) indepsList
-      let eq_a2 ← Meta.mkEq a (sum)
+      let (sum, mulTermsList, expMvarsList) ← @generateSum2 α (numAdditions + 1) indepsList
+      let eq_a ← Meta.mkEq a (sum)
       let eq_a_syn ← eq_a.toSyntax
-      let eq_a_syn2 ← eq_a2.toSyntax
-      Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn2 := ?_))
+      Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn := ?_))
 
       match body.getAppFnArgs with
         | (``HAdd.hAdd, #[α', β', γ, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
