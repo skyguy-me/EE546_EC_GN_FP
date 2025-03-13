@@ -1,19 +1,4 @@
---  * Copyright (C) <2025> <EMBER CHOW AND GOKUL NATHAN>
---  *
---  * This program is free software; you can redistribute it and/or modify
---  * it under the terms of the GNU General Public License as published by
---  * the Free Software Foundation; either version 3 of the License, or (at
---  * your option) any later version.
---  *
---  * This program is distributed in the hope that it will be useful,
---  * but WITHOUT ANY WARRANTY; without even the implied warranty of
---  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
---  * General Public License for more details.
---  *
---  * You should have received a copy of the GNU General Public License
---  * along with this program; if not, see <http://www.gnu.org/licenses/>.
 
-/-
 <center><h1>EE 546 : Automated Reasoning</h1></center>
 <center><h2>Final Project Z-transforms</h2></center>
 
@@ -24,9 +9,8 @@ Ember Chow and Gokul Nathan<br />
 Winter 2025<br />
 </center>
 <br />
--/
 
-/-
+
 <center><h2>Project Abstract and Overview</h2></center>
 
 The explosion of artificial Intelignece (AI) and Machine Learning (ML), has promoted rexamination many long standing prinicples in the field of control theory and applications <sup>1</sup>. From NVIDIA's latest COSMOS foundation models for physical AI development <sup>2</sup> to Harvard' Generalist Medical AI (GMAI) <sup>3</sup>, AI and ML are often used as a method of solving multi-objective, contrained optimization problems in numerous industries including aerospace, agricutlutral, medical, and robotics <sup>4-7</sup>. Given the high impact nature of these industries, there is a critical need for interpretable, generalizable, explainable, and, perhaps most importantly, certifiable models for safety critcal applications. One of the key challenges in ensuring safety and reliability in control systems is the rigorous verification of mathematical properties <sup>8</sup>. A traditional approach is to encode such systems using the language of control theory, understanding how such systems transform inputs into outputs, and then proving mathematical properties of these transformations. However, manual encoding and independent verification is not a scalable approach, given the rapid proliferation of AI/ML systems <sup>9</sup>. This highlights a key gap in current landscape: verificable and scalable methods of evaulavating and certification of the AI/ML models. Modern theorem provers, like Lean4, bridge this gap by providing a rigorous yet scalable approach for formal verification using mechanized proof techniques based on classsical approaches. The Z-transform is a foundational tool in the analysis of discrete-time control systems, but it is not well supported in Lean 4 and Mathlib's digital signal processing capabilities remain limited.
@@ -54,8 +38,8 @@ To address this gap, we propose encoding a standard Z-transform table, as descri
 9. Kaminwar, S.R., Goschenhofer, J., Thomas, J., Thon, I. and Bischl, B., 2023. Structured verification of machine learning models in industrial settings. Big Data, 11(3), pp.181-198.
 
 10. Fadali, M.S. and Visioli, A., 2009. Digital control engineering: analysis and design. Academic press.
--/
 
+```hs
 import Mathlib.Analysis.Complex.Basic
 import Mathlib.Analysis.SpecificLimits.Normed
 
@@ -71,9 +55,8 @@ import Mathlib.Topology.Basic
 import Mathlib.Topology.Filter
 
 import Mathlib.Tactic.Linarith
+```
 
-
-/-
 <center><h2>Introductions to Z-transforms</h2></center>
 
 This project focuses on implementing and exploring the Z-transform, a crucial mathematical tool for analyzing discrete-time signals and systems in the field of signal processing. The Z-transform transforms discrete signals from the time domain into the complex frequency domain, enabling more efficient analysis and manipulation of signals. The Z-transform is defined as:
@@ -101,9 +84,8 @@ The **Discrete-Time Fourier Transform (DTFT)** is closely related to the Z-trans
 For convenience, we define some aliases for the Z-transform and DTFT with `alias ZT := ZTransform` and `alias DTFT := DiscreteTimeFourierTransform`, allowing us to use shorthand notation. Finally, we define custom notation for the Z-transform and DTFT with `notation "𝓩" => ZTransform`, `notation "𝓩_u" => ZTransformUnilateral`, and `notation "𝓕_d" => DiscreteTimeFourierTransform`, making the expressions more concise.
 
 This project aims to provide a formal and computational framework for the Z-transform and related transforms like the DTFT. By implementing these definitions in Lean, we can rigorously analyze discrete-time signals, explore their properties, and apply these transforms in various signal processing tasks such as system analysis, filter design, and stability analysis.
--/
 
-/-
+
 <h2> Approach: solving challenges while maintaing robust future development directions </h2>
 
 Our approach to implementing the Z-transform in Lean 4 follows a top-down methodology, beginning with an in-depth examination of the foundational content available in Mathlib. During this process, we identified a gap in how certain critical aspects of signal processing—specifically the Z-transform—were represented and handled. To address this, we built a structured framework from the ground up, defining core principles and mathematical structures to support the Z-transform and its applications.
@@ -123,9 +105,8 @@ The implementation of the Z-transform is centered around defining it as an infin
 - **Time Shifting:** The time-shifting theorem proves that delaying a discrete-time function in the time domain results in multiplication by a power of \(z\) in the Z-domain. This is shown by algebraically manipulating the indices of the summation and using the properties of exponentiation. The proof methodically demonstrates how the shift in index position modifies the sum while maintaining the function’s structure. We leverage established summation-shifting theorems to ensure that our proof remains consistent across different types of discrete-time signals.
 
 Each proof follows a structured approach: first, the Z-transform is expanded in its summation form, then algebraic manipulation is applied to express the transformed function in an equivalent form, and finally, Lean’s theorem-proving capabilities are used to rigorously validate each step. The constructive nature of Lean ensures that each transformation is fully verified within a formal logical framework. Additionally, the implementation benefits from existing summability theorems and bijective mappings, ensuring correctness and reducing redundancy in proof structures.
--/
 
-/- ## Our custom Libraries
+ ## Our custom Libraries
 
 Having outlined our top-down approach and the foundational work behind implementing the Z-transform in Lean 4, we now turn to the three core definition files that follow this method. These files serve as the backbone of the project, each contributing to the larger goal of creating a comprehensive, rigorously defined framework for signal processing and Z-transform applications in Lean 4.
 
@@ -164,10 +145,8 @@ several working examples. We first demonstrate how `sum_simp` compares to manual
 user intuition. We then demonstrate two practical applications of the tactic in decomposing complex sums.
 
 
- -/
-
-
-
+ 
+```hs
 import EE546ECGNFP.Defs -- Useful mathematical definitions
 import EE546ECGNFP.Signal -- USeful examining the signal properties
 import EE546ECGNFP.ZTransformProperties -- Useful properties for implementing engineering Z-transforms
@@ -178,20 +157,16 @@ set_option maxHeartbeats 10000000
 set_option maxRecDepth 1000
 
 variable (x : DiscreteSignal)
-
-/- <h3>Development of our custom Lean4 tactics</h>
+```
+ <h3>Development of our custom Lean4 tactics</h>
   @EMMY PUT YOUR TACTICS WRITEUP HERE.
--/
 
-
-
-/- **Fundamental Z-Transforms Properties**
+ **Fundamental Z-Transforms Properties**
 
 In this sub-section, we provide a detailed explanation of several key theorems related to the unit step function `unit_step` (aliased as `u`). These theorems establish fundamental properties such as causality and summability, and they show how multiplication by the unit step function affects discrete-time signals. Specifically, we establish that multiplying a signal by $`u(k) `$ enforces causality and preserves summability. We formalize these properties in Lean so that the **causal nature of our signals has specific implications in the Z-transform**. By encoding these results, we ensure that Lean can automatically reason about causality in **Z-transform proofs**, particularly when proving properties like the **region of convergence (ROC)** and **linearity of summation**.
 
-These causal properties allow us to **exploit simplifications** in proofs, ensuring that when working with the Z-transform of causal signals, we can restrict summation to the non-negative domain, rather than dealing with the entire integer set $ \mathbb{Z} $.-/
+These causal properties allow us to **exploit simplifications** in proofs, ensuring that when working with the Z-transform of causal signals, we can restrict summation to the non-negative domain, rather than dealing with the entire integer set $ \mathbb{Z} $.
 
-/-
 # Properties of the Z-Transform
 | No. | Name                          | Formula                                                                                                                                  | Implementation |
 |----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|----------------|
@@ -203,13 +178,13 @@ These causal properties allow us to **exploit simplifications** in proofs, ensur
 | 6   | **Complex Differentiation**   | $` \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)`$                                                   |:black_square_button:|
 | 7   | **Final Value Theorem**       | $` f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)`$                                       |:black_square_button:|
 | 8   | **Initial Value Theorem**     | $` f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)`$                                                                   |:black_square_button:|
--/
 
-/-
+
 ### **Solving the Linearity Property**
 The proof of linearity ensures that the Z-transform of a linear combination of two sequences is equivalent to the corresponding linear combination of their individual transforms. This is achieved by expanding the Z-transform definition into an infinite summation and applying the linearity of summation operators. Since the summation of two functions distributes over addition, we formally separate the summation into two distinct sums, allowing each to be rewritten in terms of their respective Z-transforms. Lean’s theorem-proving framework rigorously verifies this transformation by enforcing correct term expansion and sum decomposition, ensuring that the final expression adheres to the expected mathematical formulation.
 
--/
+
+```hs
 @[simp]
 theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (z : ℂ) (a b : ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂ : HasZTransform f₂ F₂ z) :
   HasZTransform (fun k => a * f₁ k + b * f₂ k) (fun z => a * F₁ z + b * F₂ z) z := by
@@ -252,11 +227,10 @@ theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ
   calc
     a ^ (-k) * f k * z ^ (-k) =  f k * z ^ (-k) * a ^ (-k) := by ring
     _ = f k * (z * a)^ (-k) :=  by rw[mul_zpow, mul_assoc]
-
-/-This is a foundational result in control systems: if a signal is both stable and casual,then its gauranteed to have a stable Z-transform. This ensures that the  systems being analyzed in the Z-domain are physically realizable.
-Furthermore, it provides a rigorous criterion for determining when a system is Z-transformable and supports the development of robust control laws by verifying whether system properties hold within the region of convergence. -/
-
-
+```
+This is a foundational result in control systems: if a signal is both stable and casual,then its gauranteed to have a stable Z-transform. This ensures that the  systems being analyzed in the Z-domain are physically realizable.
+Furthermore, it provides a rigorous criterion for determining when a system is Z-transformable and supports the development of robust control laws by verifying whether system properties hold within the region of convergence. 
+```hs
 @[simp]
 theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc : ‖z‖ > 1) : IsStable x → IsCausal x → ZTransformable x z := by
   intro hs hc
@@ -306,17 +280,8 @@ theorem zt_FinalValueTheorem
 
 
 -- EMMY I want an example here showing how the property can be used in a actual simplification proof. --
+```
 
-
-
-
-
-
-
-
-
-
-/-
 ## Limitations and Future Work
 While this project successfully formalizes key properties of the Z-transform, several limitations remain, providing opportunities for future extensions. First, developing a formal proof of the inverse Z-transform remains an open challenge. While the direct Z-transform is well-structured and provable within Lean’s framework, the inverse transform involves contour integration techniques and residue calculus, which are not yet fully formalized in Lean’s mathematical libraries.
 
@@ -328,4 +293,4 @@ A key design choice in this project was the adoption of the **bilateral Z-transf
 
 Despite these limitations, each of these areas presents a significant opportunity for future research. The development of formal inverse Z-transform proofs, robust stability analysis, and multidimensional Z-transform extensions would greatly enhance the robustness and applicability of this framework, making it more suitable for real-world engineering applications.
 
--/
+
