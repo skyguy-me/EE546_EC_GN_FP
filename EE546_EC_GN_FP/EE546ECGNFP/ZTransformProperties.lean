@@ -204,3 +204,35 @@ theorem ZTransformToDTFT : ∀ x : DiscreteSignal, (fun ω : ℝ => 𝓩 x (Comp
     x k * (Complex.exp (j * ↑ω) ^ k)⁻¹
       = x k * (Complex.exp (j * ↑ω * ↑k))⁻¹ := by rw [← Complex.exp_int_mul (j * ↑ω) k]; ring_nf
     _ = x k * Complex.exp (-(j * ↑ω * ↑k)) := by rw [←Complex.exp_neg (j * ↑ω * ↑k)]
+
+
+
+theorem zt_mul_left (z : ℂ) (f₁ : DiscreteSignal) (F₁ : ℂ → ℂ) (a : ℂ)
+(hz₁ : HasZTransform f₁ F₁ z) :
+  HasZTransform (fun k => a * f₁ k) (fun z => a * F₁ z) z := by
+  unfold HasZTransform
+  change HasSum (fun k ↦ a * f₁ k * z ^ (-k)) (( a * F₁ z))
+  simp only[mul_assoc]
+  apply HasSum.mul_left a hz₁
+
+theorem zt_mul_right (z : ℂ) (f₁ : DiscreteSignal) (F₁ : ℂ → ℂ) (a : ℂ)
+(hz₁ : HasZTransform f₁ F₁ z) :
+  HasZTransform (fun k => f₁ k * a) (fun z => F₁ z * a) z := by
+  unfold HasZTransform
+  change HasSum (fun k ↦  f₁  k  * a * z ^ (-k) ) ((F₁ z * a))
+  have: (λ k ↦ f₁  k  * a * z ^ (-k)) = (λ k ↦ f₁  k   * z ^ (-k) * a ):= by
+    ext k
+    ring_nf
+  -- ⊢ HasSum (fun k ↦ f₁ k * a * z ^ (-k)) (F₁ z * a)
+  simp only[this]
+  apply HasSum.mul_right a hz₁
+
+theorem zt_add (z : ℂ) (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ) (hz₁ : HasZTransform f₁ F₁ z)  (hz₂: HasZTransform f₂ F₂ z) :
+   HasZTransform (fun k => f₁ k + f₂ k) (fun z => F₁ z + F₂ z) z := by
+    unfold HasZTransform -- (fun k ↦ (fun k ↦ f₁ k + f₂ k) k * z ^ (-k)) ((fun z ↦ F₁ z + F₂ z) z)
+    change HasSum (fun k ↦ (f₁ k + f₂ k) * z ^ (-k)) ( F₁ z + F₂ z)
+    have :  (fun k ↦ (f₁ k + f₂ k) * z ^ (-k)) = (fun k ↦(f₁ k) * z ^ (-k) + (f₂ k) * z ^ (-k)) := by
+      ext k
+      ring_nf
+    simp only[this]
+    apply HasSum.add  hz₁ hz₂
