@@ -33,7 +33,7 @@ The explosion of artificial Intelignece (AI) and Machine Learning (ML), has prom
 
 To address this gap, we propose encoding a standard Z-transform table, as described in <sup>10</sup>, into the language and additionally exposing APIs to interact with these definitions. Contrary to initial expectations, this effort proved more challenging than anticipated due to a lack of existing foundational results, either because they were wholly missing or because they were not specialized from more general results. In this retrospective report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. The authors have successfully enclosed a few of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, more efforts will be needed to meet the initial proposal. Future work should expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust and unified Z-transform verification framework for control engineering applications.
 
-### Works Cited<
+### Works Cited
 
 1. Bensoussan, A., Li, Y., Nguyen, D.P.C., Tran, M.B., Yam, S.C.P. and Zhou, X., 2022. Machine learning and control theory. In Handbook of numerical analysis (Vol. 23, pp. 531-558). Elsevier
 
@@ -180,9 +180,31 @@ set_option maxRecDepth 1000
 variable (x : DiscreteSignal)
 
 /- <h3>Development of our custom Lean4 tactics</h>
-  @EMMY PUT YOUR TACTICS WRITEUP HERE.
--/
+Our goal is to make working with the **Z-transform** in Lean4 as smooth and automated as possible. To do this, we built a custom tactic called `sum_simp` that helps break down and simplify summation expressions, making it much easier to prove results related to discrete-time systems.
 
+**How It Works:**
+
+1. **Breaking Down Summations**:
+   - The tactic systematically applies **HasSum.add** to split up sums into smaller, more manageable pieces.
+   - It also factors out independent multiplicative terms whenever possible.
+
+2. **Analyzing Expressions**:
+   - We use functions like `countAndCollect` and `collectIndependent` to separate dependent terms from independent ones.
+   - `reduceHMul` helps us rebuild multiplicative chains in a structured way.
+
+3. **Handling Geometric Series Automatically**:
+   - The tactic recognizes geometric sum patterns and applies **hasSum_geometric_of_abs_lt_one** when it makes sense.
+
+4. **Refining Summation Steps**:
+   - The `generateSum` function introduces intermediate variables (`?S1`, `?S2`, etc.) to cleanly break down sums.
+   - `splitAdditions` applies **HasSum.add** recursively, making sure dependencies are handled correctly.
+
+5. **Automating Proofs**:
+   - The tactic uses `convert`, `refine`, and `simp` to streamline proofs and eliminate tedious manual work.
+   - We also rotate terms strategically (`rotate_left`, `rotate_right`) to keep things in the best possible order.
+
+By implementing `sum_simp`, our approach eliminates repetitive manual steps in proving summation properties and simplifies the verification of **Z-transform-related** identities. This tactic serves as a foundation for further automation in **discrete-time system analysis and signal processing in Lean4**.
+-/
 
 
 /- **Fundamental Z-Transforms Properties**
@@ -220,7 +242,6 @@ theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ)
   <;> apply zt_mul_left
   <;> assumption
 
-
 /-
 $`\mathcal{Z}(x[k - k_0]) = z^{-k_0}X(z)`$
 -/
@@ -237,7 +258,6 @@ theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {
       _ = f (k) * z^(-k) * z^(-n) := by rw[neg_add, zpow_add₀ z_neq_zero, mul_assoc]
       _ = z^(-n) * (f (k) * z^(-k)) := by rw[mul_comm]
 
-
 /-
 $`\mathcal{Z}(x[k + k_0]) = z^{k_0}X(z)`$
 -/
@@ -246,8 +266,6 @@ theorem ZTransform_time_adv (f : DiscreteSignal) {F : ℂ → ℂ} {z : ℂ} {z_
   HasZTransform (fun k => f (k + n)) (fun z => z^n * F z) z := by
     convert ZTransform_time_delay (z_neq_zero := z_neq_zero) hz (-n) using 2
     <;> ring_nf
-
-
 
 /-
 $`\mathcal{Z}(a^k x[k]) = X(az)`$
@@ -313,7 +331,6 @@ theorem zt_FinalValueTheorem
     simp only[ZTransform]
     sorry
 
-
 /-
 Future work
 
@@ -323,18 +340,6 @@ $`\displaystyle x[0] = \lim_{k \to \infty} X(z)`$
    (x : DiscreteSignal) :
    Tendsto (𝓩 x) (comap norm atTop) (𝓝 (x 0)) := by
      sorry
-
-
--- EMMY I want an example here showing how the property can be used in a actual simplification proof. --
-
-
-
-
-
-
-
-
-
 
 /-
 ## Limitations and Future Work
