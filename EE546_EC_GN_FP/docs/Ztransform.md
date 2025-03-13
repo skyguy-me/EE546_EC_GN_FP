@@ -88,6 +88,7 @@ This project aims to provide a formal and computational framework for the Z-tran
 
 <h2> Approach: solving challenges while maintaing robust future development directions </h2>
 
+
 Our approach to implementing the Z-transform in Lean 4 follows a top-down methodology, beginning with an in-depth examination of the foundational content available in Mathlib. During this process, we identified a gap in how certain critical aspects of signal processing—specifically the Z-transform—were represented and handled. To address this, we built a structured framework from the ground up, defining core principles and mathematical structures to support the Z-transform and its applications.
 
 The first step in our implementation was defining the Z-transform itself, along with its essential properties. This required an understanding of its mathematical and computational aspects, such as convergence, summability, and the interplay between time and frequency domains. We then defined a representation for discrete sampled signals, as they form the fundamental unit of analysis in signal processing. This process led to a more foundational exploration of key mathematical structures, including sets, monoids, complex numbers, and natural numbers. While Mathlib provided a strong foundation, many of these structures were not readily available in the form needed for signal processing tasks, prompting us to develop them independently while ensuring compatibility with existing Mathlib definitions.
@@ -159,7 +160,8 @@ set_option maxRecDepth 1000
 
 variable (x : DiscreteSignal)
 ```
- <h3>Development of our custom Lean4 tactics</h>
+ <h3>Development of our custom Lean4 tactics</h3>
+
 Our goal is to make working with the **Z-transform** in Lean4 as smooth and automated as possible. To do this, we built a custom tactic called `sum_simp` that helps break down and simplify summation expressions, making it much easier to prove results related to discrete-time systems.
 
 **How It Works:**
