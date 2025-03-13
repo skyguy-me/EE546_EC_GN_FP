@@ -33,6 +33,7 @@ import Mathlib.Tactic.Linarith
 
 import EE546ECGNFP.Defs -- Useful definitions for implementing engineering Z-transforms
 import EE546ECGNFP.Signal -- USeful examining the signal properties
+import EE546ECGNFP.Tactic
 
 open Filter Topology Controls Controls.Discrete
 

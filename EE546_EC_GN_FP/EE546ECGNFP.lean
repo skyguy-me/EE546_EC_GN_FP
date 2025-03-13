@@ -17,5 +17,6 @@
 -- Import modules here that should be built as part of the library.
 import EE546ECGNFP.Basic
 import EE546ECGNFP.Signal
+import EE546ECGNFP.Tactic
 import EE546ECGNFP.Ztransform
 import EE546ECGNFP.ZTransformProperties
