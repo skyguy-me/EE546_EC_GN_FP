@@ -180,7 +180,7 @@ set_option maxRecDepth 1000
 
 variable (x : DiscreteSignal)
 
-/- <h3>Development of our custom Lean4 tactics</h>
+/- <h3>Development of our custom Lean4 tactics</h3>
 Our goal is to make working with the **Z-transform** in Lean4 as smooth and automated as possible. To do this, we built a custom tactic called `sum_simp` that helps break down and simplify summation expressions, making it much easier to prove results related to discrete-time systems.
 
 **How It Works:**
