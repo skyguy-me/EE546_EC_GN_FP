@@ -112,7 +112,7 @@ The first step in our implementation was defining the Z-transform itself, along 
 
 
 INSERT PICTURE HERE of the depedency tree and the mathemical properties.
-![Dependency Graph](./assets/deps.png)
+![Dependency Graph](./assets/deps.svg)
 
 ## Mathematical Foundations and Implementation
 The implementation of the Z-transform is centered around defining it as an infinite sum over integer indices, mapping a discrete-time function into the complex plane. A key aspect of this formalization is the integration of summability results from fundamental definitions, ensuring that infinite series converge appropriately within the Lean framework. The following core properties, implemented in `ZTransformProperties.lean`, `Signal.lean`, and `Defs.lean`, were rigorously proven:
