@@ -35,6 +35,7 @@ open Lean Elab Tactic
 
 set_option maxHeartbeats 10000000
 
+
 partial def countAdditions (expr : Expr) : Nat :=
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[_, _, _, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
@@ -117,6 +118,16 @@ partial def collectIndependent(e : Expr) : MetaM (List Expr × List Expr) := do
     let dep := e.hasLooseBVars
     return (if dep then [e] else [], if dep then [] else [e])
 
+partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr)) := do
+    match expr.getAppFnArgs with
+    | (``HAdd.hAdd, #[_, _, _, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
+      let (n, indeps) ← countAndCollect addl
+      let (_, indepl) ← collectIndependent addr
+      return (n + 1, indeps ++ [indepl])
+    | _ =>
+      let (_, indepl) ← collectIndependent expr
+      return ((0 : ℕ), [indepl])
+
 -- Main function
 def factor_independent_left (β : Expr) (f : Expr)  : TacticM Unit := do
   let .lam var α body binderInfo := f | throwError "Expected a lambda expression"
@@ -124,7 +135,7 @@ def factor_independent_left (β : Expr) (f : Expr)  : TacticM Unit := do
   -- Collect dependent and independent terms
   let (dependentTerms, independentTerms) ← collectIndependent body
   -- Log the results
-  --logInfo m!"{body} => Dependent terms: {dependentTerms}, Independent terms: {independentTerms}"
+  logInfo m!"{body} => Dependent terms: {dependentTerms}, Independent terms: {independentTerms}"
 
   if !independentTerms.isEmpty then
     let deps ← reduceHMul dependentTerms
@@ -154,12 +165,32 @@ def factor_independent_left (β : Expr) (f : Expr)  : TacticM Unit := do
 partial def generateSum {α : Expr} (n : Nat) : MetaM Expr := do
   -- Base case: if n = 1, return ?S1
   if n == 1 then
-    Lean.Meta.mkFreshExprMVar α (kind := MetavarKind.synthetic)
+    Lean.Meta.mkFreshExprMVar α (userName := s!"S{n}".toName) (kind := MetavarKind.synthetic)
   else
     -- Recursive case: generate ?S1 + ?S2 + ... + ?Sn
-    let Sn ← Meta.mkFreshExprMVar α
+    let Sn ← Meta.mkFreshExprMVar (userName := s!"S{n}".toName) α (kind := MetavarKind.synthetic)
     let prevSum ← @generateSum α (n - 1)
     Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn]
+
+partial def generateSum2 {α : Expr} (n : Nat) (indeps : List (List Expr)) : MetaM Expr := do
+  -- Base case: if n = 1, return ?S1
+  if n == 1 then
+
+    let Sn ← Lean.Meta.mkFreshExprMVar α (userName := s!"S{n}".toName) (kind := MetavarKind.synthetic)
+    if !indeps.head!.isEmpty then
+      Meta.mkAppM ``HMul.hMul #[←reduceHMul indeps.head!, Sn]
+    else
+      return Sn
+  else
+    let prevSum ← @generateSum2 α (n - 1) indeps.tail!
+    -- Recursive case: generate ?S1 + ?S2 + ... + ?Sn
+    let Sn ← Meta.mkFreshExprMVar (userName := s!"S{n}".toName) α (kind := MetavarKind.synthetic)
+
+    if !indeps.head!.isEmpty then
+      let Sn_mul ← Meta.mkAppM ``HMul.hMul #[←reduceHMul indeps.head!, Sn]
+      Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn_mul]
+    else
+      Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn]
 
 
 partial def splitAdditions (α' β' expr : Expr) (n : Nat) : TacticM Unit := do
@@ -212,14 +243,19 @@ elab "sum_simp" : tactic => do
     match f with
     | .lam _ _ body _ =>
       let numAdditions := countAdditions body
+      let (n, indeps) ← countAndCollect body
+      logInfo m!"{(←countAndCollect body)}"
       --logInfo m!"{←Lean.Meta.inferType a}"
 
       if numAdditions = 0 then
         factor_independent_left α f
         return
 
-      let eq_a ← Meta.mkEq a (← @generateSum α (numAdditions))
+      let eq_a ← Meta.mkEq a (← @generateSum α (numAdditions + 1))
+      let eq_a2 ← Meta.mkEq a (← @generateSum2 α (n + 1) indeps)
+      logInfo eq_a2
       let eq_a_syn ← eq_a.toSyntax
+      logInfo eq_a
       Lean.Elab.Tactic.evalTactic (← `(tactic| have : $eq_a_syn := ?_))
 
       match body.getAppFnArgs with
@@ -267,7 +303,7 @@ elab "sum_simp" : tactic => do
 example {α : Type} [AddCommMonoid α] [TopologicalSpace α] [ContinuousAdd α]
   {f1 f2 f3 f4 : ℕ → ℝ}
   (hf1 : HasSum f1 1) (hf2 : HasSum f2 3) (hf3 : HasSum f3 0) (hf4 : HasSum f4 (-2)) :
-  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + f4 n) 9 := by
+  HasSum (fun n => 2 * f1 n + 3 * f2 n + f3 n + 2 * f4 n) 9 := by
     sum_simp
 
 
