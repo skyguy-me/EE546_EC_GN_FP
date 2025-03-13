@@ -1,5 +1,5 @@
 <center><h1>EE 546 : Automated Reasoning</h1></center>
-<center><h2>Final Project Z-transforms</h2></center>
+<center><h2>Implementing Z-transforms in Lean4</h2></center>
 
 <center>
 Department of Electrical and Computer Engineering<br />
