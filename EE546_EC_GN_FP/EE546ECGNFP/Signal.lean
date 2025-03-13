@@ -43,19 +43,55 @@ namespace Controls.Discrete
 -- Because we're al engineers here.
 def j : ℂ := I
 
+/-
+A discrete signal is defined to be a function $`x : \mathbb{Z} \to \mathbb{C}`$
+-/
 def DiscreteSignal : Type := ℤ → ℂ
 
 noncomputable def discrete_convolution (f g : DiscreteSignal) : DiscreteSignal :=
   fun k => ∑' m : ℤ, f m * g (k - m)
 
+/-
+A discrete signal is said to be causal iff it is zero for all negative indicies.
+
+$`\forall k < 0, \quad x[k] = 0`$
+-/
 def IsCausal (x : DiscreteSignal) := ∀ k : ℤ, k < 0 → x k = 0
 
+/-
+A discrete signal is said to be causal iff it is zero for all positive indicies.
+
+$`\forall k > 0, \quad x[k] = 0`$
+-/
 def IsAnticausal (x : DiscreteSignal) := ∀ k ∈ PosInt, x k = 0
 
+/-
+A discrete signal is said to be bounded iff there is an upperbound on its norm
+for all indicies.
+
+x is bounded $\iff `\exists M \in \mathbb{R} : \forall k \in \mathbb{Z}, \quad \lVert x[k]\rVert` < M$
+-/
 def IsBoundedSignal (x : DiscreteSignal) := ∃ M : ℝ, ∀ k : ℤ, ‖x k‖ < M
 
+/-
+A discrete signal is said to be stable iff its limit at infinity exists and is finite.
+
+$`x`$ is stable $`\iff \displaystyle \lim_{k \to \infty} x[k]`$ exists
+-/
 def IsStable (x : DiscreteSignal) := ∃ xf : ℂ, Tendsto x atTop (𝓝 xf)
 
+/-
+A signal that is both stable and causal is bounded.
+
+$`x`$ is stable and $`x`$ is bounded $`\implies \displaystyle \exists M \in \mathbb{R} :
+\forall k \in \mathbb{Z}, \quad \lVert x[k]\rVert` < M`$
+
+We sketch the proof out as follows.
+
+The stability of $`x`$ bounds the tails of the signal for $`n > N`$.
+Since there are only finitely many nonzero terms $`n \le N`$, the head of the signal is also bounded.
+The overall bound is then the maximum of both of bound on the tail and the head.
+-/
 theorem isStableAndCausal_implies_isBounded (x : DiscreteSignal) :
     IsStable x → IsCausal x → IsBoundedSignal x := by
   intro hs hc
@@ -156,14 +192,28 @@ theorem isStableAndCausal_implies_isBounded (x : DiscreteSignal) :
     exact hN_bound k hk
 
 
+/-
+A discrete signal is said to have a final value $`xf`$ iff that is its limit at infinity.
+
+$`xf`$ is the final value of $`x` \iff \displaystyle \lim_{k \to \infty} x[k] = xf$
+-/
 def HasFinalValue (x : DiscreteSignal) (xf : ℂ) := Tendsto x atTop (𝓝 xf)
 
+/-
+A discrete signal with a final value is stable.
+-/
 theorem hasFinalValue_implies_isStable (x : DiscreteSignal) (xf : ℂ) :
     HasFinalValue x xf → IsStable x := by
       intro h
       use xf
       exact h
 
+/-
+The following two theorems state that $`f`$ is causal signal, the product of it with any signal is
+also causal.
+
+$`f`$ is causal $`\implies \forall g : \mathbb{Z} \to \mathbb{C}, \quad f \cdot g`$ is causal
+-/
 theorem isCausal_of_mul_causal {f g : DiscreteSignal} (hf : IsCausal f) : IsCausal (fun k ↦ g k * f k) := by
   intro k hk
   convert mul_zero (g k)
@@ -174,6 +224,11 @@ theorem isCausal_of_causal_mul {f g : DiscreteSignal} (hf : IsCausal f) : IsCaus
   rw[mul_comm]
 
 
+/-
+The infinite sum over the negative indicies of a causal signal is zero.
+
+$`\displaystyle f`$ is causal $`\implies \sum_{k = -\infty}^-1 f[k] = 0`$
+-/
 theorem summable_zero_of_causal {f : DiscreteSignal} (hf : IsCausal f) :
     Summable (fun k : NegInt ↦ f k) := by
       convert summable_zero with ⟨k, hk⟩
@@ -183,6 +238,13 @@ theorem hasSum_zero_of_causal {f : DiscreteSignal} (hf : IsCausal f) :
     HasSum (fun k : NegInt ↦ f k) 0 := by
       convert hasSum_zero with ⟨k, hk⟩
       exact hf k hk
+
+
+/-
+Multiplication by a causal signal can be written as an indicator function.
+
+$`\displaystyle f`$ is causal $`\implies \sum_{k = -\infty}^-1 f[k] = 0`$
+-/
 
 theorem indicator_of_IsCausal_mul {f : DiscreteSignal} {g : DiscreteSignal} (hf : IsCausal f) :
   (fun k : ℤ ↦ f k * g k) = (fun k : ℤ ↦ NonNegInt.indicator (fun k ↦ f k * g k) k) := by
@@ -233,36 +295,46 @@ def unit_step (k : ℤ) : ℂ :=
 alias u := unit_step
 alias H := unit_step
 
+/-
+The following utility lemmas conditions on when the unit step function is 1 or 0.
+-/
 @[simp]
-theorem unit_step_of_nat : ∀ (n : ℕ), unit_step n = 1 := by
+lemma unit_step_of_nat : ∀ (n : ℕ), unit_step n = 1 := by
   intro n
   simp
 
 @[simp]
-theorem unit_step_of_nonneg : ∀ (k : NonNegInt), unit_step k = 1 := by
+lemma unit_step_of_nonneg : ∀ (k : NonNegInt), unit_step k = 1 := by
   intro ⟨k, hk⟩
   simp
   exact hk
 
+
 @[simp]
-theorem unit_step_of_pos : ∀ (k : PosInt), unit_step k = 1 := by
+lemma unit_step_of_pos : ∀ (k : PosInt), unit_step k = 1 := by
   intro ⟨k, hk⟩
   simp
   exact Int.le_of_lt hk
 
 @[simp]
-theorem unit_step_of_neg : ∀ (k : NegInt), unit_step k = 0 := by
+lemma unit_step_of_neg : ∀ (k : NegInt), unit_step k = 0 := by
   intro ⟨k, hk⟩
   simp
   exact hk
 
-theorem unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicator 1 k := by
+/-
+The unit step function is equivalen tot an indiicator function of 1.
+-/
+lemma unit_step_equiv_indicator : ∀ k : ℤ, unit_step k = NonNegInt.indicator 1 k := by
   intro k
   unfold NonNegInt
   by_cases k_pos : k ≥ 0
   <;> simp[k_pos]
 
-theorem unit_step_causal : IsCausal unit_step := by simp[IsCausal]
+/-
+The unit step function is causal.
+-/
+lemma unit_step_causal : IsCausal unit_step := by simp[IsCausal]
 
 @[simp]
 theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
@@ -270,16 +342,19 @@ theorem hasSum_nat_of_unit_step_mul (f : DiscreteSignal) (S : ℂ) :
     HasSum (fun (n : ℕ) ↦ f n) S := by
       simp only[u, unit_step_of_nat, one_mul]
 
-/-This allows us to rewrite sums over ℤ in terms of sums over non-negative integers only, a key step when handling Z-transform proofs for causal signals.-/
-
-
+/-
+This allows us to rewrite sums over ℤ in terms of sums over non-negative integers only,
+a key step when handling Z-transform proofs for causal signals.
+-/
 
 theorem causal_of_mul_unit_step (x : DiscreteSignal) :
     IsCausal (fun k : ℤ ↦ x k * u k) := by
       exact isCausal_of_mul_causal unit_step_causal
 
-/-This confirms that causal signals only depend on present and past values, which simplifies Z-transform computations.-/
-
+/-
+This confirms that causal signals only depend on present and past values,
+which simplifies Z-transform computations.
+-/
 
 
 theorem causal_of_unit_step_mul (x : DiscreteSignal) :

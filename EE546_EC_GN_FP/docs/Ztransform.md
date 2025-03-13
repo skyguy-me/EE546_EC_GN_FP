@@ -181,6 +181,9 @@ These causal properties allow us to **exploit simplifications** in proofs, ensur
 
 
 ### **Solving the Linearity Property**
+
+$`\mathcal{Z}(ax[k] + by[k]) = aX(z) + bY(z)`$
+
 The proof of linearity ensures that the Z-transform of a linear combination of two sequences is equivalent to the corresponding linear combination of their individual transforms. This is achieved by expanding the Z-transform definition into an infinite summation and applying the linearity of summation operators. Since the summation of two functions distributes over addition, we formally separate the summation into two distinct sums, allowing each to be rewritten in terms of their respective Z-transforms. Lean’s theorem-proving framework rigorously verifies this transformation by enforcing correct term expansion and sum decomposition, ensuring that the final expression adheres to the expected mathematical formulation.
 
 
@@ -191,8 +194,11 @@ theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ)
   convert zt_add z (fun k => a * f₁ k) (fun k => b * f₂ k) ?_ ?_ ?add_left ?add_right
   <;> apply zt_mul_left
   <;> assumption
+```
 
+$`\mathcal{Z}(x[k - k_0]) = z^{-k_0}X(z)`$
 
+```hs
 @[simp]
 theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ)   :
   HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z := by
@@ -205,16 +211,21 @@ theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {
         rw[add_sub_cancel_right]
       _ = f (k) * z^(-k) * z^(-n) := by rw[neg_add, zpow_add₀ z_neq_zero, mul_assoc]
       _ = z^(-n) * (f (k) * z^(-k)) := by rw[mul_comm]
+```
 
+$`\mathcal{Z}(x[k + k_0]) = z^{k_0}X(z)`$
 
+```hs
 @[simp]
 theorem ZTransform_time_adv (f : DiscreteSignal) {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ) :
   HasZTransform (fun k => f (k + n)) (fun z => z^n * F z) z := by
     convert ZTransform_time_delay (z_neq_zero := z_neq_zero) hz (-n) using 2
     <;> ring_nf
+```
 
+$`\mathcal{Z}(a^k x[k]) = X(az)`$
 
-
+```hs
 @[simp]
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
  (∀ (z : ROC), HasZTransform f F z) →
@@ -228,6 +239,10 @@ theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ
     a ^ (-k) * f k * z ^ (-k) =  f k * z ^ (-k) * a ^ (-k) := by ring
     _ = f k * (z * a)^ (-k) :=  by rw[mul_zpow, mul_assoc]
 ```
+
+
+If $`x`$ is causal and stable $`\implies x`$ is bounded.
+
 This is a foundational result in control systems: if a signal is both stable and casual,then its gauranteed to have a stable Z-transform. This ensures that the  systems being analyzed in the Z-domain are physically realizable.
 Furthermore, it provides a rigorous criterion for determining when a system is Z-transformable and supports the development of robust control laws by verifying whether system properties hold within the region of convergence. 
 ```hs
@@ -255,8 +270,14 @@ theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc
       _ ≤ ‖m‖ * ‖z ^ (-n : ℤ)‖ := by
         have : m ≤ ‖m‖ := by exact Real.le_norm_self m
         rel[this]
+```
 
--- future work
+Future work
+
+If $`x`$ is causal and stable $`\implies`$
+$`\displaystyle \lim_{k \to \infty} x[k] = \lim_{z \to 1} X(z)`$
+
+```hs
 theorem zt_FinalValueTheorem
   (x : DiscreteSignal) (xf : ℂ) :
   IsCausal x → HasFinalValue x xf →
@@ -265,18 +286,17 @@ theorem zt_FinalValueTheorem
     intro hxf
     simp only[ZTransform]
     sorry
+```
 
+Future work
 
--- future work
--- theorem zt_InitialValueTheorem
---   (x : DiscreteSignal) (xf : ℂ) :
---   IsCausal x → HasFinalValue x xf →
---   Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
---     intro hx_causal
---     intro hxf
---     simp only[ZTransform]
---     sorry
+$`\displaystyle x[0] = \lim_{k \to \infty} X(z)`$
 
+```hs
+theorem zt_InitialValueTheorem
+   (x : DiscreteSignal) :
+   Tendsto (𝓩 x) (comap norm atTop) (𝓝 (x 0)) := by
+     sorry
 
 
 -- EMMY I want an example here showing how the property can be used in a actual simplification proof. --

@@ -27,13 +27,13 @@ Winter 2025<br />
 -/
 
 /-
-<center><h2>Project Abstract and Overview</h2></center>
+## Project Abstract and Overview
 
 The explosion of artificial Intelignece (AI) and Machine Learning (ML), has promoted rexamination many long standing prinicples in the field of control theory and applications <sup>1</sup>. From NVIDIA's latest COSMOS foundation models for physical AI development <sup>2</sup> to Harvard' Generalist Medical AI (GMAI) <sup>3</sup>, AI and ML are often used as a method of solving multi-objective, contrained optimization problems in numerous industries including aerospace, agricutlutral, medical, and robotics <sup>4-7</sup>. Given the high impact nature of these industries, there is a critical need for interpretable, generalizable, explainable, and, perhaps most importantly, certifiable models for safety critcal applications. One of the key challenges in ensuring safety and reliability in control systems is the rigorous verification of mathematical properties <sup>8</sup>. A traditional approach is to encode such systems using the language of control theory, understanding how such systems transform inputs into outputs, and then proving mathematical properties of these transformations. However, manual encoding and independent verification is not a scalable approach, given the rapid proliferation of AI/ML systems <sup>9</sup>. This highlights a key gap in current landscape: verificable and scalable methods of evaulavating and certification of the AI/ML models. Modern theorem provers, like Lean4, bridge this gap by providing a rigorous yet scalable approach for formal verification using mechanized proof techniques based on classsical approaches. The Z-transform is a foundational tool in the analysis of discrete-time control systems, but it is not well supported in Lean 4 and Mathlib's digital signal processing capabilities remain limited.
 
 To address this gap, we propose encoding a standard Z-transform table, as described in <sup>10</sup>, into the language and additionally exposing APIs to interact with these definitions. Contrary to initial expectations, this effort proved more challenging than anticipated due to a lack of existing foundational results, either because they were wholly missing or because they were not specialized from more general results. In this retrospective report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. The authors have successfully enclosed a few of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, more efforts will be needed to meet the initial proposal. Future work should expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust and unified Z-transform verification framework for control engineering applications.
 
-<h3>Works Cited</h3>
+### Works Cited<
 
 1. Bensoussan, A., Li, Y., Nguyen, D.P.C., Tran, M.B., Yam, S.C.P. and Zhou, X., 2022. Machine learning and control theory. In Handbook of numerical analysis (Vol. 23, pp. 531-558). Elsevier
 
@@ -207,6 +207,9 @@ These causal properties allow us to **exploit simplifications** in proofs, ensur
 
 /-
 ### **Solving the Linearity Property**
+
+$`\mathcal{Z}(ax[k] + by[k]) = aX(z) + bY(z)`$
+
 The proof of linearity ensures that the Z-transform of a linear combination of two sequences is equivalent to the corresponding linear combination of their individual transforms. This is achieved by expanding the Z-transform definition into an infinite summation and applying the linearity of summation operators. Since the summation of two functions distributes over addition, we formally separate the summation into two distinct sums, allowing each to be rewritten in terms of their respective Z-transforms. Lean’s theorem-proving framework rigorously verifies this transformation by enforcing correct term expansion and sum decomposition, ensuring that the final expression adheres to the expected mathematical formulation.
 
 -/
@@ -218,6 +221,9 @@ theorem ZTransform_linear (f₁ f₂ : DiscreteSignal) (F₁ F₂ : ℂ → ℂ)
   <;> assumption
 
 
+/-
+$`\mathcal{Z}(x[k - k_0]) = z^{-k_0}X(z)`$
+-/
 @[simp]
 theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ)   :
   HasZTransform (fun k => f (k - n)) (fun z => z^(-n) * F z) z := by
@@ -232,6 +238,9 @@ theorem ZTransform_time_delay {f : DiscreteSignal} {F : ℂ → ℂ} {z : ℂ} {
       _ = z^(-n) * (f (k) * z^(-k)) := by rw[mul_comm]
 
 
+/-
+$`\mathcal{Z}(x[k + k_0]) = z^{k_0}X(z)`$
+-/
 @[simp]
 theorem ZTransform_time_adv (f : DiscreteSignal) {F : ℂ → ℂ} {z : ℂ} {z_neq_zero: z ≠ 0} (hz : HasZTransform f F z) (n : ℤ) :
   HasZTransform (fun k => f (k + n)) (fun z => z^n * F z) z := by
@@ -240,6 +249,9 @@ theorem ZTransform_time_adv (f : DiscreteSignal) {F : ℂ → ℂ} {z : ℂ} {z_
 
 
 
+/-
+$`\mathcal{Z}(a^k x[k]) = X(az)`$
+-/
 @[simp]
 theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ) :
  (∀ (z : ROC), HasZTransform f F z) →
@@ -253,7 +265,11 @@ theorem ZTransform_exp_mul (f : DiscreteSignal) (F : ℂ → ℂ) (ROC : Set ℂ
     a ^ (-k) * f k * z ^ (-k) =  f k * z ^ (-k) * a ^ (-k) := by ring
     _ = f k * (z * a)^ (-k) :=  by rw[mul_zpow, mul_assoc]
 
-/-This is a foundational result in control systems: if a signal is both stable and casual,then its gauranteed to have a stable Z-transform. This ensures that the  systems being analyzed in the Z-domain are physically realizable.
+/-
+
+If $`x`$ is causal and stable $`\implies x`$ is bounded.
+
+This is a foundational result in control systems: if a signal is both stable and casual,then its gauranteed to have a stable Z-transform. This ensures that the  systems being analyzed in the Z-domain are physically realizable.
 Furthermore, it provides a rigorous criterion for determining when a system is Z-transformable and supports the development of robust control laws by verifying whether system properties hold within the region of convergence. -/
 
 
@@ -282,7 +298,12 @@ theorem ztransormable_of_stable_and_causal (x : DiscreteSignal) (z : ℂ) (h_roc
         have : m ≤ ‖m‖ := by exact Real.le_norm_self m
         rel[this]
 
--- future work
+/-
+Future work
+
+If $`x`$ is causal and stable $`\implies`$
+$`\displaystyle \lim_{k \to \infty} x[k] = \lim_{z \to 1} X(z)`$
+-/
 theorem zt_FinalValueTheorem
   (x : DiscreteSignal) (xf : ℂ) :
   IsCausal x → HasFinalValue x xf →
@@ -293,16 +314,15 @@ theorem zt_FinalValueTheorem
     sorry
 
 
--- future work
--- theorem zt_InitialValueTheorem
---   (x : DiscreteSignal) (xf : ℂ) :
---   IsCausal x → HasFinalValue x xf →
---   Tendsto (fun z ↦ (z - 1) * (𝓩 x z)) (𝓝 1) (𝓝 xf) := by
---     intro hx_causal
---     intro hxf
---     simp only[ZTransform]
---     sorry
+/-
+Future work
 
+$`\displaystyle x[0] = \lim_{k \to \infty} X(z)`$
+-/
+ theorem zt_InitialValueTheorem
+   (x : DiscreteSignal) :
+   Tendsto (𝓩 x) (comap norm atTop) (𝓝 (x 0)) := by
+     sorry
 
 
 -- EMMY I want an example here showing how the property can be used in a actual simplification proof. --
