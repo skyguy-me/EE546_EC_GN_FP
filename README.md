@@ -15,6 +15,8 @@ The explosion of artificial Intelignece (AI) and Machine Learning (ML), has prom
 
 To address this gap, we propose encoding a standard Z-transform table, as described in <sup>10</sup>, into the language and additionally exposing APIs to interact with these definitions. Contrary to initial expectations, this effort proved more challenging than anticipated due to a lack of existing foundational results, either because they were wholly missing or because they were not specialized from more general results. In this retrospective report, we detail how canonical Z-transform identities were encoded, discuss the underlying proof mechanisms, and highlight the advantages of automated simplifications. The authors have successfully enclosed a few of key Z-transform identities, proved several properties, and laid the groundwork for additional proof techniques. While these results mark a significant step toward a comprehensive toolkit, more efforts will be needed to meet the initial proposal. Future work should expand the set of covered identities, refine the proof infrastructure, and ultimately enable a robust and unified Z-transform verification framework for control engineering applications.
 
+Click here to jump to the project report and detailed writeup [(https://github.com/skyguy-me/EE546_EC_GN_FP/blob/main/EE546_EC_GN_FP/docs/Ztransform.md)]
+
 <h3>Works Cited</h3>
 
 1. Bensoussan, A., Li, Y., Nguyen, D.P.C., Tran, M.B., Yam, S.C.P. and Zhou, X., 2022. Machine learning and control theory. In Handbook of numerical analysis (Vol. 23, pp. 531-558). Elsevier
@@ -39,7 +41,7 @@ To address this gap, we propose encoding a standard Z-transform table, as descri
 
 <h2>Repository Organization</h2>
 
-This repository is structured into five Lean files that collectively build a comprehensive Z-Transform table implementation. Each file contributes to a specific aspect of the theory and its applications. Each lean file has an associated readme file that dives more deeply into the theory and the lean implementation of the transform tables. **Ztransform.md** is the primary file to read to track the progress of the Z-transform implementations. 
+This repository is structured into five Lean files that collectively build a comprehensive Z-Transform table implementation. Each file contributes to a specific aspect of the theory and its applications. Each lean file has an associated readme file that dives more deeply into the theory and the lean implementation of the transform tables. **Ztransform.md** is the primary file to read to track the progress of the Z-transform implementations.  This file's goal is orient the and direct the reader and provide samples on how to use the library.  
 
 #### **1. `Defs.lean` – Core Definitions**
 This file serves as the **foundational layer** of the project, defining key mathematical structures used throughout the repository. It collects **essential primitives** to maintain consistency across the implementation.
@@ -57,9 +59,21 @@ This file encodes **core properties and operations** of the Z-transform. It **bu
 #### **5. `ZTransform.lean` – Core Z-Transform Implementation**
 This is the central file of the repository, where the **Z-transform table is formally defined and implemented**.
 
+<h2>Introductions to Z-transforms</h2>
 
+The Z-transform is defined as:
+$$ \displaystyle \mathcal{Z}\{x[n]\} = X(z) = \sum_{k=-\infty}^{\infty} x[k] z^{-k} $$
 
+Where:
+- $` x[k] `$ is the discrete-time signal,
+- $` z `$ a complex variable,
+- $` X(z) `$ is the Z-transform of $` x[k] `$.
 
+This transformation is widely used in systems analysis, particularly in the design of digital filters and stability analysis of discrete-time systems.
+
+<h2> Approach: solving challenges while maintaing robust future development directions </h2>
+
+Our approach to implementing the Z-transform in Lean 4 follows a top-down methodology, beginning with an in-depth examination of the foundational content available in Mathlib. During this process, we identified gaps in signal processing—specifically how  Z-transforms were represented and handled. To address this, we built a structured framework from the ground up, defining core principles and mathematical structures to support the Z-transform and its applications.
 
 
 
@@ -101,6 +115,19 @@ While this decomposition can be done manually, **`sum_simp` automates the proces
   - Stability Implications: Demonstrates the behavior of a new **bounded signal with a final value**.
 - These properties are **critical for control system design** and **signal stability analysis**.
 
+<span style="color:red">EMMY I need a example usage of the Signal here. I was thinking we show if a function's provided Final value is the correct or not. Take a look below and check for correctnesss. </span>.
+
+```hs
+def example_signal (k : ℤ) : ℂ := if k ≥ 0 then 1 / (k + 1) else 0
+
+lemma example_signal_stable : IsStable example_signal := by
+  unfold IsStable
+  use 0  -- Expected final value
+  apply tendsto_of_tendsto_of_near
+  simp only [example_signal]
+  exact tendsto_one_div_atTop_nhds_zero_nat
+```
+
 ### **3. Implementation and Proofs of Z-Transform Tables for System Analysis**
 - Implements **fully formalized Z-transform tables** in Lean 4.
 - These tables allow users to:
@@ -108,6 +135,25 @@ While this decomposition can be done manually, **`sum_simp` automates the proces
   - **Assess controllability** by examining Z-transform properties.
   - **Facilitate controller design** based on available signal information.
 - This work provides a **formal verification** approach to classical **Z-transform techniques**, ensuring **mathematical rigor** in engineering applications.
+
+<span style="color:red">EMMY I need a example usage of the Signal here. I was thinking we show if a function's provided Z-transform is correct or not. Take a look below and check for correctnesss. </span>.
+
+```hs
+def example_signal (a : ℂ) (k : ℤ) : ℂ := if k ≥ 0 then a^k else 0
+def true_ZT (a z : ℂ) : ℂ := 1 / (1 - a * z⁻¹)
+def test_ZT (a z : ℂ) : ℂ := 1 / (1 - 2a * z⁻¹)
+
+lemma check_provided_ZT (a z : ℂ) :
+  (provided_ZT a z = table_ZT a z) → False := by
+  unfold table_ZT provided_ZT
+  intro h_assumption
+  have h_contradiction : (1 / (1 - a * z⁻¹)) = (1 / (1 - 2a * z⁻¹)) → False := by
+    intro h_eq
+    field_simp at h_eq
+    linarith
+  exact h_contradiction h_assumption
+```
+
 
 ---
 
@@ -117,3 +163,4 @@ While this decomposition can be done manually, **`sum_simp` automates the proces
 - **This document provides a high-level overview** of how the files interconnect.
 
 This structured approach ensures that the implementation is **modular, correct, and extensible**, making it a valuable resource for formalizing the Z-transform in Lean 4.
+
