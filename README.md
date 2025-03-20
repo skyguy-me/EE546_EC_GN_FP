@@ -127,14 +127,17 @@ While this decomposition can be done manually, **`sum_simp` automates the proces
 <span style="color:red">EMMY I need a example usage of the Signal here. I was thinking we show if a function's provided Final value is the correct or not. Take a look below and check for correctnesss. </span>.
 
 ```hs
-def example_signal (k : ℤ) : ℂ := if k ≥ 0 then 1 / (k + 1) else 0
+noncomputable def example_signal (k : ℤ) : ℂ := if k ≥ 0 then 5 else 0
+noncomputable def expected_final_value : ℂ := 5
 
-lemma example_signal_stable : IsStable example_signal := by
-  unfold IsStable
-  use 0  -- Expected final value
-  apply tendsto_of_tendsto_of_near
-  simp only [example_signal]
-  exact tendsto_one_div_atTop_nhds_zero_nat
+lemma example_signal_final_value_correct : HasFinalValue example_signal expected_final_value := by
+  unfold HasFinalValue
+  apply Tendsto.congr' _ tendsto_const_nhds
+  apply eventually_atTop.2
+  use 0
+  intro k hk
+  simp [example_signal, hk]
+  rfl
 ```
 
 ### **3. Implementation and Proofs of Z-Transform Tables for System Analysis**
