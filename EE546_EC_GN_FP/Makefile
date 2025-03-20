@@ -13,7 +13,7 @@ all: $(TARGETS)
 # Rule to generate .md files from .lean files
 $(BUILD_DIR)/%.md: $(PROJECT_DIR)/%.lean
 	@mkdir -p $(BUILD_DIR)
-	python ./dm.py $< > $@
+	python3 ./dm.py $< > $@
 
 # Clean up the build directory
 clean:

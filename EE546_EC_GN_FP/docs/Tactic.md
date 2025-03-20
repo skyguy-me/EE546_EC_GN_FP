@@ -27,6 +27,9 @@ open Lean Elab Tactic
 In order to define the sum simplification tactic, we first write several utilities which will be used by the file.
 
 
+
+#### reduceHMul
+
 Performs a mulutiplication reducation on a list of expressions, turning `[expr1, expr2, expr3, ...]` into
 `expr1 * expr2 * expr3 * ...`
 
@@ -44,6 +47,8 @@ def reduceHMul (exprs : List Expr) : MetaM Expr := do
       result ← Meta.mkAppM ``HMul.hMul #[result, expr]
     return result
 ```
+
+#### Collect Independent
 
 This function takes an expression e which is of the form  and collects all all dependent and
 independent terms. `a * b(n) * c(n) * d ...` gets turned into two lists `[a, d, ...]` and `[b(n), c(n), ...]`
@@ -70,6 +75,8 @@ partial def collectIndependent(e : Expr) : MetaM (List Expr × List Expr) := do
     return (if dep then [e] else [], if dep then [] else [e])
 ```
 
+#### countAndCollect
+
 Given an expression that is a sum of products: $`a₁ * b₁(n) * c₁(n) * ... + a₂(n) * b₂(n) * ... + ... `$
 this function simulatneously counts how many additions are in the expression and for each term, seperates out
 independent and dependent terms.
@@ -91,29 +98,79 @@ partial def countAndCollect(expr : Expr) : MetaM (Nat × List (List Expr) × Lis
       return ((0 : ℕ), [dep], [indep])
 ```
 
-Given an expression that is a product in a sum, this will attempt to take out all constant factors.
+#### factorIndependentLeft
 
-$`\displaystyle \sum_{k = 0}^\infty a \cdot b \cdot x[k] \cdot c \to abc \sum_{k = 0}^\infty x[k]`$
+Given a lambda expression that is a part of a `HasSum`, this will
+factor all constant factors (independent terms) to the left.
+
+This function does nothing if there are no independent terms to factor.
 
 ```hs
-def factor_independent_left (f : Expr) (dependentTerms : List Expr) (independentTerms : List Expr) (target : Expr)  : TacticM Unit := do
-  let .lam var α body binderInfo := f | throwError "Expected a lambda expression"
+def factorIndependentLeft (f : Expr) (dependentTerms : List Expr) (independentTerms : List Expr) (target : Expr)  : TacticM Unit := do
+  let .lam var α _ binderInfo := f | throwError "Expected a lambda expression"
 
   if !independentTerms.isEmpty then
-    let depsMul ← reduceHMul dependentTerms
+```
+
+The first step is to generate the factored expression. This is
+accomplished by mutiplying all the independent terms to the left
+of the dependent terms. This is used to create a lambda expression
+that represents the result of the factorization.
+
+$`\textrm{dependentTerms} = [a, b, c]
+\quad \to \quad
+\textrm{depsMul} = a\, *\, b\, *\, c`$
+
+$`\textrm{independentTerms} = [f₁(n), f_2(n)]
+\quad \to \quad
+\textrm{indepsMul} = f_1(n)\, *\, f_2(n)`$
+
+$`\textrm{factored\_body} = a\, *\, b\, *\, c\, *\, f_1(n)\, *\, f_2(n)`$
+
+```hs
+let depsMul ← reduceHMul dependentTerms
     let indepsMul ← reduceHMul independentTerms
     let factored_body ← Meta.mkAppM ``HMul.hMul #[indepsMul, depsMul]
 
     let factored_f := Lean.Expr.lam var α factored_body binderInfo
     let factored_fSyn ← factored_f.toSyntax
     let f_syn ← f.toSyntax
+```
 
-    let f_dependent := Lean.Expr.lam var α depsMul binderInfo
-    let f_dependentSyn ← f_dependent.toSyntax
+The factored expression and the original expression can be shown
+to be equal by using the `ext` and `ring_nf` tactics. This equality
+is subsequently substituted into the current subgoal.
 
-    Lean.Elab.Tactic.evalTactic (←`(tactic| try have : $f_syn = $factored_fSyn := by ext; ring_nf))
+The equality subgoal introduced by the `have` tactic is then
+cleared since it is no longer necessary.
+
+
+$`\textrm{fun}\ n \mapsto a\, *\, f₁(n)\, *\, b\, *\, f₂(n)\, *\, c =
+`\textrm{fun}\ n \mapsto a\, *\, b\, *\, c\, *\, f₁(n)\, *\, f₂(n)`$
+
+$`\textrm{HasSum} (\textrm{fun}\ n \mapsto a\, *\, f₁(n)\, *\, b\, *\, f₂(n)\, *\, c)\ ?\_
+\to
+\textrm{HasSum} (\textrm{fun}\ n \mapsto a\, *\, b\, *\, c\, *\, f₁(n)\, *\, f₂(n))\ ?\_
+`$
+
+```hs
+Lean.Elab.Tactic.evalTactic (←`(tactic|
+      try have : $f_syn = $factored_fSyn := by ext; ring_nf))
     Lean.Elab.Tactic.evalTactic (←`(tactic| try simp only[this]))
     Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
+```
+
+Finally `HasSum.mul_left` is applied to reduce solving the sum to solving its
+dependent part.
+
+$`\textrm{HasSum} (\textrm{fun}\ n \mapsto a\, *\, b\, *\, c\, *\,
+f_1(n)\, *\, f_2(n))\ ?\_
+\to
+\textrm{HasSum} \underbrace{(\textrm{fun}\ n \mapsto f_1(n)\, *\, f_2(n))}_{\textrm{f\_dependent}}\ (\underbrace{(a\, *\, b\, *\, c)}_{\textrm{indepsMul}}\, *\, ?\_)`$
+
+```hs
+let f_dependent := Lean.Expr.lam var α depsMul binderInfo
+    let f_dependentSyn ← f_dependent.toSyntax
 
     let indepsMulSyn ← indepsMul.toSyntax
     let targetSyn ← target.toSyntax
@@ -122,6 +179,8 @@ def factor_independent_left (f : Expr) (dependentTerms : List Expr) (independent
       refine HasSum.mul_left (f := $f_dependentSyn) (a₁ := $targetSyn) $indepsMulSyn ?_))
     Lean.Elab.Tactic.evalTactic (← `(tactic| try clear * -))
 ```
+
+#### generateSum
 
 Generates a sum with n placeholder variables with constant factors. Returns ths sum expression, a list of the
 placeholders with constant factors out front, and a list of the placeholders.
@@ -149,40 +208,97 @@ partial def generateSum {α : Expr} (n : Nat) (indeps : List (List Expr)) : Meta
       return (←Meta.mkAppM ``HAdd.hAdd #[prevSum, Sn], [Sn] ++ snMulList, [Sn] ++ snList)
 ```
 
-Decomposes a sum expression using linearity
+#### decomposeSum
+
+Decomposes a sum expression using linearity. The first step is to
+check if the expression we are decomposing is a HasSum expression..
 
 ```hs
 partial def decomposeSum  (β' : Expr) (depsList indepsList : List (List Expr)) (mulTermsList expMvarsList : List Expr) (expr : Expr) (n : Nat) : TacticM Unit := do
     match expr.getAppFnArgs with
     | (``HAdd.hAdd, #[α, β, γ, instHAdd, addl, addr]) | (``Add.add, #[_, instAdd, addl, addr]) =>
+```
 
-        let fl := Lean.Expr.lam `n β' addl BinderInfo.default
+We recursively split the sum into left and right components using left
+associativity. An example is provided below.
+
+$`\textrm{HasSum} \underbrace{((f_1(n) + f_2(n))}_{\textrm{addl}} +
+\underbrace{a\, *\, f_3(n)\, *\, b)}_{addr}`$
+
+We subsequently turn these into lambdas expressions.
+
+$`fl := \textrm{fun}\ n \mapsto a\, *\, f_3(n)\, *\, b `$
+$`fr := \textrm{fun}\ n \mapsto f_1(n) + f_2(n) `$
+
+```hs
+let fl := Lean.Expr.lam `n β' addl BinderInfo.default
         let fr := Lean.Expr.lam `n β' addr BinderInfo.default
 
         let flSyn ← Lean.Expr.toSyntax fl
         let frSyn ← Lean.Expr.toSyntax fr
+```
 
-        if n > 1 then
-          let hSnIdent := mkIdent s!"sum_simp_{n + 1}".toName
-          let SnSyn ← mulTermsList[0]!.toSyntax
+Base case:
 
-          Lean.Elab.Tactic.evalTactic (←`(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (b := $SnSyn) ?_ ?$hSnIdent))
+This is similar to the recursive case, which is discussed in further depth.
 
-          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
-          factor_independent_left fr depsList[0]! indepsList[0]! expMvarsList[0]!
-          Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
-        else
+```hs
+if n == 1 then
+
           let S1Syn ← mulTermsList[1]!.toSyntax
           let S2Syn ← mulTermsList[0]!.toSyntax
 
           Lean.Elab.Tactic.evalTactic (←
           `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp_1 ?sum_simp_2))
 
-          factor_independent_left fl depsList[1]! indepsList[1]! expMvarsList[1]!
+          factorIndependentLeft fl depsList[1]! indepsList[1]! expMvarsList[1]!
           Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
-          factor_independent_left fr depsList[0]! indepsList[0]! expMvarsList[0]!
+          factorIndependentLeft fr depsList[0]! indepsList[0]! expMvarsList[0]!
           Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
+          return
+```
 
+Recursive case:
+
+We use the `convert` tactic to decompose the current goal
+into two subgoals, recursively applying `HasSum.add`.
+We name the right subgoal `sum_simp_{n + 1}`. The left subgoal
+will continue to be decomposed.
+
+Here `SnSyn` represents the unknown value of the right-most term of the sum
+after the split. It includes the value of any known constant factors so that the
+Lean type system performs better inference. Continuing from the previous example we
+now have:
+
+$`\textrm{HasSum}\ (\textrm{fun}\ \mapsto f_1(n) + f_2(n))\ ?\_ \quad\quad`$ left subgoal
+
+$`\textrm{HasSum}\ (\textrm{fun}\ \mapsto a\, *\, f_3(n)\, *\, b)
+\underbrace{(a\, *\, b\, *\, ?S_k)}_{\textrm{mulTermsList[0]}} \quad\quad`$ right subgoal (sum_simp_1)
+
+All arrays are structured so terms are ordered right to left.
+
+```hs
+let hSnIdent := mkIdent s!"sum_simp_{n + 1}".toName
+        let SnSyn ← mulTermsList.head!.toSyntax
+
+        Lean.Elab.Tactic.evalTactic (←`(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (b := $SnSyn) ?_ ?$hSnIdent))
+```
+
+The next step is to factor out any constants to the left. `rotate_left`
+is used to reorder the goals so we can factor the right-most sum. After
+the term is factored, `rotate_right` resets the goals to their original order.
+
+See `factorIndependentLeft` for more details.
+
+Finally, we recusively call the `decomposeSum` function, giving it
+the left-side of the `HasSum` expression. `depsList`, `indepsList`,
+`mulTermsList`, and `expMvarsList` are ordered right-most to left-most
+so the head of the tail is the next term.
+
+```hs
+Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
+        factorIndependentLeft fr depsList.head! indepsList.head! expMvarsList.head!
+        Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
         decomposeSum β' depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (n - 1)
     | _ => return
@@ -202,7 +318,7 @@ elab "sum_simp" : tactic => do
       let (numAdditions, depsList, indepsList) ← countAndCollect body
 
       if numAdditions = 0 then
-        factor_independent_left f depsList[0]! indepsList[0]! (←Meta.mkFreshExprMVar β (kind := MetavarKind.syntheticOpaque))
+        factorIndependentLeft f depsList[0]! indepsList[0]! (←Meta.mkFreshExprMVar β (kind := MetavarKind.syntheticOpaque))
         return
 
       let (sum, mulTermsList, expMvarsList) ← @generateSum α (numAdditions + 1) indepsList
@@ -224,9 +340,9 @@ elab "sum_simp" : tactic => do
             Lean.Elab.Tactic.evalTactic (←
             `(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (a := $S1Syn) (b := $S2Syn) ?sum_simp_1 ?sum_simp_2))
 
-            factor_independent_left fl depsList[1]! indepsList[1]! expMvarsList[1]!
+            factorIndependentLeft fl depsList[1]! indepsList[1]! expMvarsList[1]!
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
-            factor_independent_left fr depsList[0]! indepsList[0]! expMvarsList[0]!
+            factorIndependentLeft fr depsList[0]! indepsList[0]! expMvarsList[0]!
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
           else
@@ -236,7 +352,7 @@ elab "sum_simp" : tactic => do
             Lean.Elab.Tactic.evalTactic (←`(tactic| try convert HasSum.add (f := $flSyn) (g := $frSyn) (b := $SnSyn) ?_ ?$hSnIdent))
 
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_left))
-            factor_independent_left fr depsList[0]! indepsList[0]! expMvarsList[0]!
+            factorIndependentLeft fr depsList[0]! indepsList[0]! expMvarsList[0]!
             Lean.Elab.Tactic.evalTactic (←`(tactic| try rotate_right))
 
             decomposeSum β depsList.tail indepsList.tail mulTermsList.tail expMvarsList.tail addl (numAdditions - 1)

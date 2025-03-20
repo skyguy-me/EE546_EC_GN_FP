@@ -334,7 +334,7 @@ theorem zt_FinalValueTheorem
 /-
 Future work
 
-$`\displaystyle x[0] = \lim_{k \to \infty} X(z)`$
+$` \displaystyle x[0] = \lim_{k \to \infty} X(z) `$
 -/
  theorem zt_InitialValueTheorem
    (x : DiscreteSignal) :
