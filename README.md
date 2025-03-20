@@ -4,7 +4,7 @@
 <center>
 Department of Electrical and Computer Engineering<br />
 Unviersity of Washington<br />
-Ember CHow and Gokul Nathan<br />
+Ember Chow and Gokul Nathan<br />
 Winter 2025<br />
 </center>
 <br />
