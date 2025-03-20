@@ -70,7 +70,7 @@ Where:
 This transformation is widely used in systems analysis, particularly in the design of digital filters and stability analysis of discrete-time systems.
 
 
-/-
+
 # Properties of the Z-Transform
 | No. | Name                          | Formula                                                                                                                                  | Implementation |
 |----:|:------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|----------------|
@@ -82,7 +82,6 @@ This transformation is widely used in systems analysis, particularly in the desi
 | 6   | **Complex Differentiation**   | $` \mathcal{Z}\{k^m\,f(k)\} \;=\; \Bigl(-\,z\,\frac{d}{dz}\Bigr)^{m}F(z)`$                                                   |:black_square_button:|
 | 7   | **Final Value Theorem**       | $` f(\infty)\;=\;\lim_{k\to\infty}f(k)\;=\;\lim_{z\to 1}\bigl(1 - z^{-1}\bigr)\,F(z)`$                                       |:black_square_button:|
 | 8   | **Initial Value Theorem**     | $` f(0)\;=\;\lim_{k\to 0}f(k)\;=\;\lim_{z\to \infty}F(z)`$                                                                   |:black_square_button:|
--/
 
 <h2>Contributions to state of art</h2>
 This repository introduces three major contributions to the state of the art in formal methods in engineering, signal processing, and control theory. 
