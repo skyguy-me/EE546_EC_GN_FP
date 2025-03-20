@@ -60,7 +60,8 @@ This is the central file of the repository, where the **Z-transform table is for
 <h2>Introductions to Z-transforms</h2>
 
 The Z-transform is defined as:
-$$ \displaystyle \mathcal{Z}\{x[n]\} = X(z) = \sum_{k=-\infty}^{\infty} x[k] z^{-k} $$
+
+$ \displaystyle \mathcal{Z}\{x[n]\} = X(z) = \sum_{k=-\infty}^{\infty} x[k] z^{-k} $
 
 Where:
 - $` x[k] `$ is the discrete-time signal,
@@ -97,18 +98,18 @@ This repository introduces three major contributions to the state of the art in 
 #### **Example Usage**
 To solve the sum:
 
-$$`\sum_{k = 0}^{\infty} 2 \left(\frac{1}{2}\right)^k + 3 \left(\frac{1}{3}\right)^k `$$
+$`\sum_{k = 0}^{\infty} 2 \left(\frac{1}{2}\right)^k + 3 \left(\frac{1}{3}\right)^k `$
 
 We can break it into geometric series components:
 
-$$` \sum_{k = 0}^{\infty} 2 \left(\frac{1}{2}\right)^k + 3 \left(\frac{1}{3}\right)^k =
+$` \sum_{k = 0}^{\infty} 2 \left(\frac{1}{2}\right)^k + 3 \left(\frac{1}{3}\right)^k =
 2 \sum_{k = 0}^{\infty} \left(\frac{1}{2}\right)^k +
-3 \sum_{k = 0}^{\infty} \left(\frac{1}{3}\right)^k `$$
+3 \sum_{k = 0}^{\infty} \left(\frac{1}{3}\right)^k `$
 
 Applying the formula for a geometric series, we obtain:
 
-$$` 2 \left(1 - \left(\frac{1}{2}\right)^{-1}\right) +
-3 \left(1 - \left(\frac{1}{3}\right)^{-1}\right) `$$
+$` 2 \left(1 - \left(\frac{1}{2}\right)^{-1}\right) +
+3 \left(1 - \left(\frac{1}{3}\right)^{-1}\right) `$
 
 While this decomposition can be done manually, **`sum_simp` automates the process**. 
 
