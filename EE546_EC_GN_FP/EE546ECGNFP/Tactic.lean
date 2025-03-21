@@ -363,7 +363,7 @@ so the head of the tail is the next term.
 Recursively simplifies a sum expression using linearity. The
 first step is to make sure the goal is of the form:
 
-$`\textrm{HasSum}\ \underbrace{(\textrm{fun}\ n \mapsto body)}_{\textrm{f}}\ a `$
+$`\textrm{HasSum}\ \underbrace{(\textrm{fun}\ n \mapsto \textrm{body})}_{\textrm{f}}\ a `$
 -/
 elab "sum_simp" : tactic => do
   let goal ← getMainGoal
@@ -443,7 +443,7 @@ We can summarize the algorithm roughly as follows:
 1. Count the number of additions.
 2. For each term in the addition, create lists of constants (independent factors) and dependent factors.
 3. Inform Lean of the form of the goal using placeholders.
-4. Recuisvely decompose.
+4. Recursively decompose.
 5. Try to solve any subgoals using hypothesis in the goal state.
 6. Run linarith to show each of the sub-sums (scaled by their constant factors.)
 
