@@ -234,3 +234,12 @@ theorem hasSum_int_shift {α : Type*} {a : α} [AddCommMonoid α] [TopologicalSp
   {f : ℤ → α} (k₀ : ℤ) : HasSum (fun k ↦ f (k + k₀)) a ↔ HasSum f a := by
     apply hasSum_bij
     exact AddGroup.addRight_bijective k₀
+
+noncomputable def finite_choice {α : Type*} (A : Finset α) (hA : A.Nonempty) : A := by
+  have Alst_neq_nil : A.toList ≠ [] := hA.toList_ne_nil
+  let a := A.toList.head Alst_neq_nil
+  refine ⟨a, ?_⟩
+  apply (A.mem_toList).mp
+  exact A.toList.head_mem Alst_neq_nil
+
+

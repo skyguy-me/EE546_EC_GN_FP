@@ -125,7 +125,9 @@ theorem isStableAndCausal_implies_isBounded (x : DiscreteSignal) :
         linarith
 
       let X := Ns.image (fun n : ℕ ↦ ‖x n‖)
+      have X_nonempty : X.Nonempty := by exact ((Ns.image_nonempty).mpr hNs_nonempty)
       let M0 := X.max' ((Ns.image_nonempty).mpr hNs_nonempty)
+
       have : 0 ≤ M0 := by
         have hx0_nonneg : ∀ x0 ∈ X, x0 ≥ 0 := by
           intro x0 hx0
@@ -135,12 +137,7 @@ theorem isStableAndCausal_implies_isBounded (x : DiscreteSignal) :
           have : ‖x n‖ ≥ 0 := by exact norm_nonneg (x ↑n)
           exact le_of_le_of_eq this hn
 
-        let x0 := X.toList.head!
-        have hx0 : x0 ∈ X := by
-          refine (X.mem_toList).mp ?_
-          refine List.head!_mem_self ?_
-          refine Finset.Nonempty.toList_ne_nil ?_
-          exact Finset.image_nonempty.mpr hNs_nonempty
+        let ⟨x0, hx0⟩ := finite_choice X X_nonempty
 
         have : 0 ≤ x0 := by
           apply hx0_nonneg
@@ -185,11 +182,9 @@ theorem isStableAndCausal_implies_isBounded (x : DiscreteSignal) :
   intro k
 
   by_cases hk : k < N
-  . refine lt_max_of_lt_left (a := ‖x k‖) (b := M) (c := 1 + ‖xf‖) ?_
-    exact hM k hk
+  . exact lt_max_of_lt_left (hM k hk)
   . simp[Int.not_lt] at hk
-    refine lt_max_of_lt_right (a := ‖x k‖) (b := M) (c := 1 + ‖xf‖) ?_
-    exact hN_bound k hk
+    exact lt_max_of_lt_right (hN_bound k hk)
 
 
 /-
