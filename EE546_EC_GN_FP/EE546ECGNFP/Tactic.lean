@@ -159,7 +159,7 @@ cleared since it is no longer necessary.
 
 
 $`\textrm{fun}\ n \mapsto a\, *\, f₁(n)\, *\, b\, *\, f₂(n)\, *\, c =
-`\textrm{fun}\ n \mapsto a\, *\, b\, *\, c\, *\, f₁(n)\, *\, f₂(n)`$
+\textrm{fun}\ n \mapsto a\, *\, b\, *\, c\, *\, f₁(n)\, *\, f₂(n)`$
 
 $`\textrm{HasSum} (\textrm{fun}\ n \mapsto a\, *\, f₁(n)\, *\, b\, *\, f₂(n)\, *\, c)\ ?\_
 \to
