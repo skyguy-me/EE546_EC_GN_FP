@@ -121,8 +121,6 @@ While this decomposition can be done manually, **`sum_simp` automates the proces
   - Stability Implications: Demonstrates the behavior of a new **bounded signal with a final value**.
 - These properties are **critical for control system design** and **signal stability analysis**.
 
-<span style="color:red">EMMY I need a example usage of the Signal here. I was thinking we show if a function's provided Final value is the correct or not. Take a look below and check for correctnesss. </span>.
-
 ```hs
 noncomputable def example_signal (k : ℤ) : ℂ := if k ≥ 0 then 5 else 0
 noncomputable def expected_final_value : ℂ := 5
@@ -144,8 +142,6 @@ lemma example_signal_final_value_correct : HasFinalValue example_signal expected
   - **Assess controllability** by examining Z-transform properties.
   - **Facilitate controller design** based on available signal information.
 - This work provides a **formal verification** approach to classical **Z-transform techniques**, ensuring **mathematical rigor** in engineering applications.
-
-<span style="color:red">EMMY I need a example usage of the Z-transfrom here. I was thinking we show if a function's provided Z-transform is correct or not by refrencing the sample signals and the tables. Take a look below and check for correctnesss. </span>.
 
 ```hs
 noncomputable def example_signal (a : ℝ ) (k : ℤ) : ℂ := if k ≥ 0 then a^k else 0
