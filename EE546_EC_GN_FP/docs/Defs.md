@@ -21,8 +21,13 @@ import Mathlib.Topology.Algebra.InfiniteSum.Basic
 namespace Controls
 
 set_option maxHeartbeats 1000000
+```
 
--- Some useful sets for partitioning sums over ℤ.
+### Integer Sets
+
+We define the following sets and show their relationships as utilities.
+
+```hs
 @[simp] def PosInt : Set ℤ := { k | k > 0 }
 @[simp] def NonNegInt : Set ℤ := { k | k ≥ 0 }
 @[simp] def NegInt : Set ℤ := { k | k < 0 }
@@ -50,7 +55,7 @@ theorem NegIntComp : NegIntᶜ = NonNegInt := by
 theorem NonNegIntComp : NonNegIntᶜ = NegInt := by
   rw [←NegIntComp, compl_compl]
 ```
--
+
 The union of non-positive integers and positive integers is ℤ.
 
 ```hs
@@ -68,7 +73,7 @@ theorem nonpos_pos_union : NonPosInt ∪ PosInt = Set.univ := by
       have : x ≤ 0 := by exact Int.not_lt.mp hx
       exact Set.mem_union_left PosInt this
 ```
--
+
 Symmetric verison of nonpos_pos_union
 
 ```hs
@@ -77,7 +82,7 @@ theorem pos_nonpos_union : PosInt ∪ NonPosInt = Set.univ := by
   rw[←Set.union_comm]
   exact nonpos_pos_union
 ```
--
+
 The union of non-negative integers and negative integers is ℤ.
 
 ```hs
@@ -95,7 +100,7 @@ theorem nonneg_neg_union : NonNegInt ∪ NegInt = Set.univ := by
       have : x ≥ 0 := by exact Int.not_lt.mp hx
       exact Set.mem_union_left NegInt this
 ```
--
+
 Symmetric verison of neg_nonneg_union
 
 ```hs
@@ -104,7 +109,7 @@ theorem neg_nonneg_union : NegInt ∪ NonNegInt = Set.univ := by
   rw[←Set.union_comm]
   exact nonneg_neg_union
 ```
--
+
 Shows that there's a bijection between the non-negative integers and ℕ.
 
 ```hs
@@ -128,7 +133,7 @@ def nonNegInt_nat_equiv : NonNegInt ≃ ℕ where
     intro n
     rfl
 ```
--
+
 Shows that the positive integers and the negative integers are disjoint.
 That is, PosInt ∩ NegInt = ∅
 
@@ -140,7 +145,7 @@ lemma int_pos_neg_disjoint : Disjoint PosInt NegInt := by
     simp at ha hb
     linarith
 ```
--
+
 Symmetric verison of int_pos_neg_disjoint
 
 ```hs
@@ -148,7 +153,7 @@ Symmetric verison of int_pos_neg_disjoint
 lemma neg_pos_int_disjoint : Disjoint NegInt PosInt := by
   exact Disjoint.symm int_pos_neg_disjoint
 ```
--
+
 Shows that the positive integers and the non-positive integers are disjoint.
 That is, PosInt ∩ NonPosInt = ∅
 
@@ -160,7 +165,7 @@ lemma int_pos_nonpos_disjoint : Disjoint PosInt NonPosInt := by
     simp at ha hb
     linarith
 ```
--
+
 Symmetric version of int_pos_nonpos_disjoint
 
 ```hs
@@ -168,7 +173,7 @@ Symmetric version of int_pos_nonpos_disjoint
 lemma int_nonpos_pos_disjoint : Disjoint NonPosInt PosInt := by
   exact Disjoint.symm int_pos_nonpos_disjoint
 ```
--
+
 Shows that the negative integers and the non-negative integers are disjoint.
 That is, NegInt ∩ NonNegInt = ∅
 
@@ -180,15 +185,21 @@ lemma int_neg_nonneg_disjoint : Disjoint NegInt NonNegInt := by
     simp at ha hb
     linarith
 ```
--
+
 Symmetric version of int_neg_nonneg_disjoint
 
 ```hs
 @[simp]
 lemma int_nonneg_neg_disjoint : Disjoint NonNegInt NegInt := by
   exact Disjoint.symm int_neg_nonneg_disjoint
+```
 
+### univ_equiv
 
+The universe set (set containing all elements) of a type
+is in bijection with that type.
+
+```hs
 def univ_equiv (α : Type*) : α ≃ @Set.univ α where
   toFun := fun a ↦ ⟨a, by trivial⟩
   invFun := fun
@@ -196,7 +207,14 @@ def univ_equiv (α : Type*) : α ≃ @Set.univ α where
 
   left_inv := by exact congrFun rfl
   right_inv := by exact congrFun rfl
+```
 
+### `hasSum_univ` and `summable_univ`
+
+Sums over all elements of a type are equivalent to sums over all elements of a type's
+universal set, since they are in bijection.
+
+```hs
 theorem hasSum_univ {α β : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
   {f : β → α} : HasSum (fun x : @Set.univ β ↦ f x) a ↔ HasSum f a := by
     exact (Equiv.hasSum_iff (α := α) (f := f) (a := a) (univ_equiv β).symm)
@@ -204,28 +222,34 @@ theorem hasSum_univ {α β : Type*} {a : α} [AddCommMonoid α] [TopologicalSpac
 theorem summable_univ {α β : Type*} [AddCommMonoid α] [TopologicalSpace α]
   {f : β → α} : Summable (fun x : @Set.univ β ↦ f x) ↔ Summable f := by
     exact (Equiv.summable_iff (α := α) (f := f) (univ_equiv β).symm)
+```
 
---theorem hasSum_bij' {α β γ : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
-  --{f : β → α} {g : β → β} : (Function.Bijective g) →
-  --(HasSum (fun (x : g '' @Set.univ β) ↦ f x) a ↔ HasSum f a) := by
-    --intro hg
-    --have : @Set.univ β ≃ g '' @Set.univ β := by
-      --refine (Equiv.ofBijective (fun x : @Set.univ β ↦ (⟨g x, ?_⟩ : (g '' @Set.univ β)))  ?_).symm
+### `hasSum_univ` and `summable_univ`
 
+Sums are equivalent under reindexing if the reindexing operation is bijective.
 
+$`\displaystyle i : X \leftrightarrow Y \sum_{x \in X} f(x) \equiv \sum_{y \in Y} f(i(y))`$
+
+```hs
 theorem hasSum_bij {α β γ : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
   {f : β → α} {i : γ → β} : (Function.Bijective i) →
   (HasSum (f ∘ i) a ↔ HasSum f a) := by
     intro hi
     exact Equiv.hasSum_iff (a := a) (f := f) (by exact Equiv.ofBijective i hi)
+```
+
+### `hasSum_int_shift_neg` and `hasSum_int_shift`
+
+Sums over integers are shift invariant.
+
+```hs
+theorem hasSum_int_shift {α : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
+  {f : ℤ → α} (k₀ : ℤ) : HasSum (fun k ↦ f (k + k₀)) a ↔ HasSum f a := by
+    apply hasSum_bij
+    exact AddGroup.addRight_bijective k₀
 
 theorem hasSum_int_shift_neg {α : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
   {f : ℤ → α} (k₀ : ℤ) : HasSum (fun k ↦ f (k - k₀)) a ↔ HasSum f a := by
     apply hasSum_bij
     exact AddGroup.addRight_bijective (-k₀)
-
-theorem hasSum_int_shift {α : Type*} {a : α} [AddCommMonoid α] [TopologicalSpace α]
-  {f : ℤ → α} (k₀ : ℤ) : HasSum (fun k ↦ f (k + k₀)) a ↔ HasSum f a := by
-    apply hasSum_bij
-    exact AddGroup.addRight_bijective k₀
 ```
